@@ -1,0 +1,16 @@
+[package]
+name = "peg-pack"
+version = "0.1.0"
+authors = ["Llew Vallis <llewvallis@gmail.com>"]
+edition = "2021"
+description = "Optimizing parser generator for PEG grammars"
+
+[dependencies]
+bimap = "0.6.2"
+seahash = "4.1"
+termcolor = "1.1"
+clap = { version = "3.2", features = ["cargo", "derive"] }
+atty = "0.2.14"
+regex = "1.5"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
