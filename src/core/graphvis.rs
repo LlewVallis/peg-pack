@@ -102,12 +102,12 @@ impl Parser {
         }
     }
 
-    fn format_class_bound(&self, bound: u32) -> String {
+    fn format_class_bound(&self, bound: u8) -> String {
         let format_char =
             bound == 0 || bound == 9 || bound == 10 || bound == 13 || bound >= 32 && bound <= 126;
 
         if format_char {
-            format!("{:?}", bound as u8 as char)
+            format!("{:?}", bound as char)
                 .replace('\\', "\\\\")
                 .replace('"', "\\\"")
         } else {

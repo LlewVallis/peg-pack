@@ -126,10 +126,10 @@ impl Parser {
 /// conditions under which it can succeed and fail
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Character {
-    /// An instruction is transparent if it can successfully match without 
+    /// An instruction is transparent if it can successfully match without
     /// consuming input
     pub transparent: bool,
-    /// An instruction is antitransparent if it can successfully match while 
+    /// An instruction is antitransparent if it can successfully match while
     /// consuming input
     pub antitransparent: bool,
     /// An instruction is fallible if it can fail to match

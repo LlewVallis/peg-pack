@@ -10,7 +10,7 @@ pub trait StoreKey: Copy + Eq + Ord + Hash {
     fn into_usize(self) -> usize;
 }
 
-/// An ordered map from a key that is convertable to a `usize`, to any value 
+/// An ordered map from a key that is convertable to a `usize`, to any value
 /// type. Insertion automatically generates a new key that has not yet been used
 pub struct Store<K, V> {
     next_id: usize,
@@ -27,7 +27,7 @@ impl<K: StoreKey, V> Store<K, V> {
         }
     }
 
-    /// Generate a key for future insertion without currently inserting into 
+    /// Generate a key for future insertion without currently inserting into
     /// the map
     pub fn reserve(&mut self) -> K {
         let id = self.next_id;

@@ -29,68 +29,16 @@ impl Codegen {
         self.newline();
     }
 
-    pub fn function(
-        &mut self,
-        name: &str,
-        parameters: &[(&str, &str)],
-        return_type: Option<&str>,
-    ) -> Statements {
-        self.function_signature(name, parameters, return_type, false);
-        Statements::new(self, |codegen| {
-            codegen.close_brace();
-            codegen.newline();
-        })
-    }
-
-    pub fn unsafe_function(
-        &mut self,
-        name: &str,
-        parameters: &[(&str, &str)],
-        return_type: Option<&str>,
-    ) -> Statements {
-        self.function_signature(name, parameters, return_type, true);
-        Statements::new(self, |codegen| {
-            codegen.close_brace();
-            codegen.newline();
-        })
-    }
-
-    fn function_signature(
-        &mut self,
-        name: &str,
-        parameters: &[(&str, &str)],
-        return_type: Option<&str>,
-        is_unsafe: bool,
-    ) {
+    pub fn function(&mut self, signature: &str) -> Statements {
         self.line("#[allow(unused)]");
-
-        if is_unsafe {
-            self.write("unsafe ");
-        }
-
-        self.write("fn ");
-        self.write(name);
-        self.write("(");
-
-        for (i, parameter) in parameters.into_iter().enumerate() {
-            if i != 0 {
-                self.write(", ");
-            }
-
-            self.write(parameter.0);
-            self.write(": ");
-            self.write(parameter.1);
-        }
-
-        self.write(") ");
-
-        if let Some(return_type) = return_type {
-            self.write("-> ");
-            self.write(return_type);
-            self.space();
-        }
-
+        self.write(signature);
+        self.space();
         self.open_brace();
+
+        Statements::new(self, |codegen| {
+            codegen.close_brace();
+            codegen.newline();
+        })
     }
 
     fn open_brace(&mut self) {
@@ -194,14 +142,11 @@ impl<'a> Match<'a> {
         Self { codegen }
     }
 
-    pub fn case(&mut self, pattern: &str) -> Statements {
+    pub fn case_line(&mut self, pattern: &str, line: &str) {
         self.codegen.write(pattern);
         self.codegen.write(" => ");
-        self.codegen.open_brace();
-
-        Statements::new(self.codegen, |codegen| {
-            codegen.close_brace();
-        })
+        self.codegen.write(line);
+        self.codegen.line(",");
     }
 }
 

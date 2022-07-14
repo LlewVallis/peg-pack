@@ -26,7 +26,6 @@ impl Parser {
         codegen.line("// Generated");
         codegen.newline();
 
-        codegen.line("#[macro_use]");
         codegen.line("#[path = \"build/runtime/mod.rs\"]");
         codegen.line("mod runtime;");
         codegen.line("use runtime::*;");
@@ -44,7 +43,7 @@ impl Parser {
         self.generate_state_functions(&mut codegen);
         self.generate_class_functions(&mut codegen);
         self.generate_dispatch_function(&mut codegen);
-        self.generate_main(&mut codegen);
+        self.generate_macro(&mut codegen);
 
         codegen.finish()
     }
@@ -65,8 +64,11 @@ impl Parser {
 
     fn generate_state_function(&self, codegen: &mut Codegen, state: State) {
         let function_name = state.function_name();
-        let mut function =
-            codegen.unsafe_function(&function_name, &[("ctx", "&mut Context")], None);
+        let function_signature = format!(
+            "unsafe fn {}<I: Input + ?Sized>(ctx: &mut Context<I, Impl>)",
+            function_name
+        );
+        let mut function = codegen.function(&function_signature);
 
         match state.instruction {
             Instruction::Seq(first, second) => match state.stage {
@@ -87,7 +89,7 @@ impl Parser {
                     );
                 }
                 2 => {
-                    function.line("state_seq_end(ctx);");
+                    function.line("ctx.state_seq_end();");
                 }
                 _ => unreachable!(),
             },
@@ -109,7 +111,7 @@ impl Parser {
                     );
                 }
                 2 => {
-                    function.line("state_choice_end(ctx);");
+                    function.line("ctx.state_choice_end();");
                 }
                 _ => unreachable!(),
             },
@@ -123,7 +125,7 @@ impl Parser {
                     );
                 }
                 1 => {
-                    function.line("state_not_ahead_end(ctx);");
+                    function.line("ctx.state_not_ahead_end();");
                 }
                 _ => unreachable!(),
             },
@@ -137,7 +139,7 @@ impl Parser {
                     );
                 }
                 1 => {
-                    function.line("state_error_end(ctx);");
+                    function.line("ctx.state_error_end();");
                 }
                 _ => unreachable!(),
             },
@@ -147,11 +149,11 @@ impl Parser {
             }
             Instruction::Class(class_id) => {
                 assert_eq!(state.stage, 0);
-                function.line(&format!("state_class(ctx, class_{});", class_id.0));
+                function.line(&format!("ctx.state_class(class_{});", class_id.0));
             }
             Instruction::Empty => {
                 assert_eq!(state.stage, 0);
-                function.line("state_empty(ctx);");
+                function.line("ctx.state_empty();");
             }
         }
     }
@@ -163,10 +165,12 @@ impl Parser {
         state: State,
         target: InstructionId,
     ) {
+        let target_name = format!("STATE_{}_0", target.0);
         let continuation_name = format!("STATE_{}_{}", state.id, state.stage + 1);
-        block.line(&format!("let target = STATE_{}_0;", target.0));
-        block.line(&format!("let continuation = {};", continuation_name));
-        block.line(&format!("{}(ctx, target, continuation);", name));
+        block.line(&format!(
+            "ctx.{}::<{}, {}>();",
+            name, target_name, continuation_name
+        ));
     }
 
     fn generate_unary_consuming_dispatch(
@@ -175,8 +179,7 @@ impl Parser {
         name: &str,
         target: InstructionId,
     ) {
-        block.line(&format!("let target = STATE_{}_0;", target.0));
-        block.line(&format!("{}(ctx, target);", name));
+        block.line(&format!("ctx.{}::<STATE_{}_0>();", name, target.0));
     }
 
     fn generate_class_functions(&self, codegen: &mut Codegen) {
@@ -186,12 +189,12 @@ impl Parser {
     }
 
     fn generate_class_function(&self, codegen: &mut Codegen, id: usize, class: &Class) {
-        let name = format!("class_{}", id);
-        let mut function = codegen.function(&name, &[("char", "Char")], Some("bool"));
+        let signature = format!("fn class_{}(char: u8) -> bool", id);
+        let mut function = codegen.function(&signature);
 
         for range in class.ranges() {
             function.line("#[allow(unused_comparisons)]");
-            let control = format!("{} <= char as u32 && char as u32 <= {}", range.0, range.1);
+            let control = format!("{} <= char && char <= {}", range.0, range.1);
             let mut branch = function.if_statement(&control);
 
             branch.line(&format!("return {};", !class.negated()));
@@ -201,27 +204,22 @@ impl Parser {
     }
 
     fn generate_dispatch_function(&self, codegen: &mut Codegen) {
-        let mut function = codegen.unsafe_function("dispatch", &[("ctx", "&mut Context")], None);
+        let mut function = codegen.function(
+            "unsafe fn dispatch<I: Input + ?Sized>(state: State, ctx: &mut Context<I, Impl>)",
+        );
 
-        let mut state_switch = function.match_statement("ctx.state()");
+        let mut state_switch = function.match_statement("state");
 
         for state in self.states() {
-            let mut case = state_switch.case(&state.const_name());
-            case.line(&format!("{}(ctx);", state.function_name()));
+            let case_line = format!("{}(ctx)", state.function_name());
+            state_switch.case_line(&state.const_name(), &case_line);
         }
 
-        state_switch
-            .case("_")
-            .line("core::hint::unreachable_unchecked();");
+        state_switch.case_line("_", "std::hint::unreachable_unchecked()");
     }
 
-    fn generate_main(&self, codegen: &mut Codegen) {
-        codegen.line(&format!(
-            "generate_implementation!(STATE_{}_0, dispatch);",
-            self.start().0
-        ));
-
-        codegen.line("generate_main!(Impl);");
+    fn generate_macro(&self, codegen: &mut Codegen) {
+        codegen.line(&format!("generate!(STATE_{}_0, dispatch);", self.start().0));
     }
 
     fn states(&self) -> impl Iterator<Item = State> {

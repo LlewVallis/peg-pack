@@ -158,7 +158,7 @@ enum InstructionIr {
     #[serde(rename_all = "camelCase")]
     Class {
         negated: bool,
-        ranges: Vec<(u32, u32)>,
+        ranges: Vec<(u8, u8)>,
         rule_name: String,
     },
     #[serde(rename_all = "camelCase")]

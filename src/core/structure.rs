@@ -13,7 +13,10 @@ impl Parser {
             results.entry(id).or_insert(HashSet::new());
 
             for successor in instruction.successors() {
-                results.entry(successor).or_insert(HashSet::new()).insert(id);
+                results
+                    .entry(successor)
+                    .or_insert(HashSet::new())
+                    .insert(id);
             }
         }
 

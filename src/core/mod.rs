@@ -163,7 +163,7 @@ impl Instruction {
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct Class {
     negated: bool,
-    ranges: Vec<(u32, u32)>,
+    ranges: Vec<(u8, u8)>,
 }
 
 impl Class {
@@ -174,7 +174,7 @@ impl Class {
         }
     }
 
-    pub fn insert<T: Into<u32>>(&mut self, start: T, end: T) {
+    pub fn insert<T: Into<u8>>(&mut self, start: T, end: T) {
         let start = start.into();
         let end = end.into();
 
@@ -189,8 +189,8 @@ impl Class {
             let next = &mut self.ranges[i + 1];
 
             if current.1 >= next.0 {
-                next.0 = u32::min(current.0, next.0);
-                next.1 = u32::max(current.1, next.1);
+                next.0 = u8::min(current.0, next.0);
+                next.1 = u8::max(current.1, next.1);
                 self.ranges.remove(i);
             } else {
                 i += 1;
@@ -202,7 +202,7 @@ impl Class {
         self.negated
     }
 
-    pub fn ranges(&self) -> impl Iterator<Item = (u32, u32)> + '_ {
+    pub fn ranges(&self) -> impl Iterator<Item = (u8, u8)> + '_ {
         self.ranges.iter().copied()
     }
 }

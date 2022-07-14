@@ -20,6 +20,20 @@ use crate::loader;
 /// A list of paths and contents to copy into the build directory
 const OUT_DIR_FILES: &[(&str, &[u8])] = &[
     ("build/runtime/mod.rs", include_bytes!("runtime/mod.rs")),
+    (
+        "build/runtime/context.rs",
+        include_bytes!("runtime/context.rs"),
+    ),
+    (
+        "build/runtime/grammar.rs",
+        include_bytes!("runtime/grammar.rs"),
+    ),
+    ("build/runtime/input.rs", include_bytes!("runtime/input.rs")),
+    (
+        "build/runtime/result.rs",
+        include_bytes!("runtime/result.rs"),
+    ),
+    ("build/harness.rs", include_bytes!("include/harness.rs")),
     ("build/loader.js", include_bytes!("include/loader.js")),
     (".gitignore", include_bytes!("include/gitignore")),
 ];
@@ -210,7 +224,7 @@ impl Context {
             .args(["-C", "target-cpu=native"])
             .arg("-o")
             .arg(self.executable_file())
-            .arg(self.parser_file())
+            .arg(self.harness_file())
             .output();
 
         let result = match result {
@@ -463,6 +477,10 @@ impl Context {
         self.out_dir().join("parser.rs")
     }
 
+    fn harness_file(&self) -> PathBuf {
+        self.out_dir().join("build/harness.rs")
+    }
+
     fn loader_file(&self) -> PathBuf {
         self.out_dir().join("build/loader.js")
     }
@@ -533,7 +551,7 @@ impl Context {
         self.print_error(message);
         exit(1);
     }
-    
+
     /// Print an error message and command output, then exit
     fn exit_with_error_and_output(&mut self, message: impl AsRef<str>, output: &Output) -> ! {
         self.print_error(message);

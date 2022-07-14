@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::ops::Index;
 
 impl Parser {
-    /// Solves an inductive function over the instruction graph by iterating 
+    /// Solves an inductive function over the instruction graph by iterating
     /// until a fixed point is reached. That is, it allows evaluating functions
     /// that are defined recursively over an instruction's children even in the
     /// presence of cycles
