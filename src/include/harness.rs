@@ -12,5 +12,5 @@ pub fn main() {
     let result = parser::parse(input.as_slice());
 
     println!("Parsed in {:.1?}", start.elapsed());
-    println!("{:?}", result);
+    println!("{:#?}", result);
 }

@@ -39,6 +39,7 @@ impl Parser {
 
         codegen.newline();
 
+        self.generate_labels(&mut codegen);
         self.generate_state_constants(&mut codegen);
         self.generate_state_functions(&mut codegen);
         self.generate_class_functions(&mut codegen);
@@ -46,6 +47,32 @@ impl Parser {
         self.generate_macro(&mut codegen);
 
         codegen.finish()
+    }
+
+    fn generate_labels(&self, codegen: &mut Codegen) {
+        codegen.line("#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]");
+        let mut enumeration = codegen.enumeration("Label");
+
+        for (_, label) in self.labels() {
+            let label = self.pascal_case(label);
+            enumeration.variant(&label);
+        }
+    }
+
+    fn pascal_case(&self, value: &str) -> String {
+        let mut result = String::new();
+
+        for segment in value.split('_') {
+            let mut chars = segment.chars();
+
+            if let Some(char) = chars.next() {
+                result.push(char.to_ascii_uppercase());
+            }
+
+            result.extend(chars);
+        }
+
+        result
     }
 
     fn generate_state_constants(&self, codegen: &mut Codegen) {
@@ -153,7 +180,9 @@ impl Parser {
                     );
                 }
                 1 => {
-                    function.line(&format!("ctx.state_label_end({});", label.0));
+                    let label = &self.labels[label];
+                    let label = self.pascal_case(label);
+                    function.line(&format!("ctx.state_label_end(Label::{});", label));
                 }
                 _ => unreachable!(),
             },

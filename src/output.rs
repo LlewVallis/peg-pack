@@ -41,6 +41,15 @@ impl Codegen {
         })
     }
 
+    pub fn enumeration(&mut self, name: &str) -> Enum {
+        self.write("enum ");
+        self.write(name);
+        self.space();
+        self.open_brace();
+
+        Enum { codegen: self }
+    }
+
     fn open_brace(&mut self) {
         self.indent();
         self.write("{");
@@ -153,5 +162,23 @@ impl<'a> Match<'a> {
 impl<'a> Drop for Match<'a> {
     fn drop(&mut self) {
         self.codegen.close_brace();
+    }
+}
+
+pub struct Enum<'a> {
+    codegen: &'a mut Codegen,
+}
+
+impl<'a> Enum<'a> {
+    pub fn variant(&mut self, name: &str) {
+        self.codegen.write(name);
+        self.codegen.line(",");
+    }
+}
+
+impl<'a> Drop for Enum<'a> {
+    fn drop(&mut self) {
+        self.codegen.close_brace();
+        self.codegen.newline();
     }
 }

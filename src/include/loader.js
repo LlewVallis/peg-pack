@@ -227,8 +227,8 @@ globalThis.label = (label, rule) => {
         throw new TypeError("Labels must be a string");
     }
 
-    if (!/[ -~]+/.test(label)) {
-        throw new TypeError("Labels must match the regex `[ -~]+`");
+    if (!/[a-z]+(_[a-z]+)*/.test(label)) {
+        throw new TypeError(`Labels must be in all lowercase snakecase: ${label}`);
     }
 
     const instruction = resolveInstruction(rule);

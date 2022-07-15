@@ -12,16 +12,16 @@ pub struct Context<'a, I: Input + ?Sized, G: Grammar> {
     grammar: &'a G,
     position: usize,
     state_stack: Stack<State>,
-    result_stack: Stack<MaybeUninit<ParseResult>>,
+    result_stack: Stack<MaybeUninit<ParseResult<G>>>,
 }
 
 impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
     #[allow(unused)]
-    pub fn run(input: &I, grammar: &G) -> ParseResult {
+    pub fn run(input: &I, grammar: &G) -> ParseResult<G> {
         Context::new(input, grammar).finish()
     }
 
-    fn finish(mut self) -> ParseResult {
+    fn finish(mut self) -> ParseResult<G> {
         unsafe {
             while self.state() != FINISH_STATE {
                 self.grammar.dispatch_state(self.state(), &mut self);
@@ -64,11 +64,11 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         self.state_stack.pop();
     }
 
-    unsafe fn result(&self) -> &ParseResult {
+    unsafe fn result(&self) -> &ParseResult<G> {
         self.result_stack.top().assume_init_ref()
     }
 
-    unsafe fn set_result(&mut self, result: ParseResult) {
+    unsafe fn set_result(&mut self, result: ParseResult<G>) {
         *self.result_stack.top_mut() = MaybeUninit::new(result);
     }
 
@@ -76,11 +76,11 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         self.result_stack.push(MaybeUninit::uninit());
     }
 
-    unsafe fn pop_result(&mut self) -> ParseResult {
+    unsafe fn pop_result(&mut self) -> ParseResult<G> {
         self.result_stack.pop().assume_init()
     }
 
-    unsafe fn take_result(&mut self) -> ParseResult {
+    unsafe fn take_result(&mut self) -> ParseResult<G> {
         let top = self.result_stack.top_mut();
         mem::replace(top, MaybeUninit::uninit()).assume_init()
     }
@@ -248,7 +248,7 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         self.push_state(TARGET);
     }
 
-    pub unsafe fn state_label_end(&mut self, label: usize) {
+    pub unsafe fn state_label_end(&mut self, label: G::Label) {
         let result = self.take_result();
         self.set_result(result.label(label));
         self.pop_state();

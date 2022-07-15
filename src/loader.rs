@@ -198,7 +198,8 @@ impl<'a> Deserialize<'a> for Label {
     fn deserialize<D: Deserializer<'a>>(deserializer: D) -> Result<Self, D::Error> {
         let value = String::deserialize(deserializer)?;
 
-        if !Regex::new("[ -~]+").unwrap().is_match(&value) {
+        let regex = Regex::new("[a-z]+(_[a-z]+)*").unwrap();
+        if !regex.is_match(&value) {
             return Err(D::Error::custom("invalid label"));
         }
 

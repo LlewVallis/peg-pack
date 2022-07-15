@@ -8,73 +8,137 @@ mod input;
 mod result;
 
 pub use context::Context;
+pub use result::{ParseResult, Match};
 pub use grammar::Grammar;
 pub use input::*;
 
 use buffered_iter::BufferedIter;
-use result::{EnterExit, Match, ParseResult};
+use result::EnterExit;
 use std::fmt::{self, Debug, Formatter};
 
-#[derive(Debug)]
-pub enum Parse {
-    Unmatched,
-    Matched(ParseMatch),
-}
+pub struct GenParseMatch<G: Grammar>(pub Match<G>);
 
-impl Parse {
-    #[allow(unused)]
-    pub(super) fn wrap(result: ParseResult) -> Self {
-        match result {
-            ParseResult::Matched(value) => Self::Matched(ParseMatch(value)),
-            ParseResult::Unmatched { .. } => Self::Unmatched,
-        }
+impl<G: Grammar> GenParseMatch<G> {
+    fn write_node(&self, f: &mut Formatter, node: &Match<G>) -> fmt::Result {
+        let label = unsafe { node.label().unwrap_unchecked() };
+        write!(f, "{:?}", label)
     }
-}
 
-pub struct ParseMatch(Match);
+    fn next_is_enter<'b>(
+        &self,
+        iter: &mut BufferedIter<impl Iterator<Item = (&'b Match<G>, EnterExit)>>,
+    ) -> bool
+        where G: 'b
+    {
+        iter.peek()
+            .map(|(_, state)| *state == EnterExit::Enter)
+            .unwrap_or(false)
+    }
 
-impl Debug for ParseMatch {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+    fn delimit_normal<'b>(
+        &self,
+        f: &mut Formatter,
+        iter: &mut BufferedIter<impl Iterator<Item = (&'b Match<G>, EnterExit)>>,
+    ) -> fmt::Result
+        where G: 'b
+    {
+        if self.next_is_enter(iter) {
+            write!(f, ", ")?;
+        }
+
+        Ok(())
+    }
+
+    fn delimit_pretty(&self, f: &mut Formatter, indent: usize) -> fmt::Result {
+        if indent != 0 {
+            write!(f, ",")?;
+        }
+
+        Ok(())
+    }
+
+    fn newline_indent(&self, f: &mut Formatter, amount: usize) -> fmt::Result {
+        write!(f, "\n")?;
+
+        for _ in 0..amount {
+            write!(f, "    ")?;
+        }
+
+        Ok(())
+    }
+
+    fn fmt_normal(
+        &self,
+        f: &mut Formatter,
+    ) -> fmt::Result {
         let mut iter = BufferedIter::new(self.0.walk_labelled());
 
-        fn next_is_enter<T>(iter: &mut BufferedIter<impl Iterator<Item = (T, EnterExit)>>) -> bool {
-            iter.peek()
-                .map(|(_, state)| *state == EnterExit::Enter)
-                .unwrap_or(false)
-        }
-
-        fn add_delimiter<T>(
-            f: &mut Formatter,
-            iter: &mut BufferedIter<impl Iterator<Item = (T, EnterExit)>>,
-        ) -> fmt::Result {
-            if next_is_enter(iter) {
-                write!(f, ", ")?;
-            }
-
-            Ok(())
-        }
-
         while let Some((node, state)) = iter.next() {
-            let label = unsafe { node.label().unwrap_unchecked() };
-
             match state {
                 EnterExit::Enter => {
-                    if next_is_enter(&mut iter) {
-                        write!(f, "{} {{ ", label)?;
+                    self.write_node(f, node)?;
+
+                    if self.next_is_enter(&mut iter) {
+                        write!(f, "(")?;
                     } else {
-                        write!(f, "{}", label)?;
                         iter.next();
-                        add_delimiter(f, &mut iter)?;
+                        self.delimit_normal(f, &mut iter)?;
                     }
                 }
                 EnterExit::Exit => {
-                    write!(f, " }}")?;
-                    add_delimiter(f, &mut iter)?;
+                    write!(f, ")")?;
+                    self.delimit_normal(f, &mut iter)?;
                 }
             }
         }
 
         Ok(())
+    }
+
+    fn fmt_pretty(
+        &self,
+        f: &mut Formatter,
+    ) -> fmt::Result {
+        let mut iter = BufferedIter::new(self.0.walk_labelled());
+        let mut indent = 0;
+
+        while let Some((node, state)) = iter.next() {
+            match state {
+                EnterExit::Enter => {
+                    if indent != 0 {
+                        self.newline_indent(f, indent)?;
+                    }
+
+                    self.write_node(f, node)?;
+
+                    if self.next_is_enter(&mut iter) {
+                        write!(f, "(")?;
+                        indent += 1;
+                    } else {
+                        iter.next();
+                        self.delimit_pretty(f, indent)?;
+                    }
+                }
+                EnterExit::Exit => {
+                    indent -= 1;
+                    self.newline_indent(f, indent)?;
+                    write!(f, ")")?;
+                    self.delimit_pretty(f, indent)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl<G: Grammar> Debug for GenParseMatch<G> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        if f.alternate() {
+            self.fmt_pretty(f)
+        } else {
+            self.fmt_normal(f)
+        }
     }
 }
 
@@ -88,6 +152,8 @@ macro_rules! generate {
         struct Impl;
 
         impl Grammar for Impl {
+            type Label = Label;
+
             fn start_state(&self) -> State {
                 $start
             }
@@ -101,12 +167,27 @@ macro_rules! generate {
             }
         }
 
-        pub use runtime::{Input, Parse};
+        #[derive(Debug)]
+        pub enum Parse {
+            Matched(ParseMatch),
+            Unmatched,
+        }
+
+        pub struct ParseMatch(GenParseMatch<Impl>);
+
+        impl std::fmt::Debug for ParseMatch {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                self.0.fmt(f)
+            }
+        }
 
         pub fn parse<I: Input + ?Sized>(input: &I) -> Parse {
             let grammar = Impl;
             let result = Context::run(input, &grammar);
-            Parse::wrap(result)
+            match result {
+                ParseResult::Matched(value) => Parse::Matched(ParseMatch(GenParseMatch(value))),
+                ParseResult::Unmatched { .. } => Parse::Unmatched,
+            }
         }
     };
 }

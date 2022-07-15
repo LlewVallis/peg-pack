@@ -1,12 +1,13 @@
 use std::hint::unreachable_unchecked;
 use std::iter::FusedIterator;
+use super::Grammar;
 
-pub enum ParseResult {
-    Matched(Match),
+pub enum ParseResult<G: Grammar> {
+    Matched(Match<G>),
     Unmatched { scan_distance: usize },
 }
 
-impl ParseResult {
+impl<G: Grammar> ParseResult<G> {
     pub fn is_match(&self) -> bool {
         match self {
             Self::Matched(_) => true,
@@ -44,7 +45,7 @@ impl ParseResult {
         }
     }
 
-    pub unsafe fn unwrap_match_unchecked(self) -> Match {
+    pub unsafe fn unwrap_match_unchecked(self) -> Match<G> {
         match self {
             Self::Matched(value) => value,
             Self::Unmatched { .. } => unreachable_unchecked(),
@@ -71,7 +72,7 @@ impl ParseResult {
         self
     }
 
-    pub fn label(self, label: usize) -> Self {
+    pub fn label(self, label: G::Label) -> Self {
         match self {
             ParseResult::Matched(value) => {
                 let new_value = Match {
@@ -89,15 +90,15 @@ impl ParseResult {
     }
 }
 
-pub struct Match {
-    label: Option<usize>,
+pub struct Match<G: Grammar> {
+    label: Option<G::Label>,
     scan_distance: usize,
     distance: usize,
     error_distance: Option<usize>,
-    children: Vec<Match>,
+    children: Vec<Self>,
 }
 
-impl Match {
+impl<G: Grammar> Match<G> {
     pub fn empty(scan_distance: usize) -> Self {
         Self::error_free(0, scan_distance)
     }
@@ -137,7 +138,7 @@ impl Match {
         self
     }
 
-    pub fn label(&self) -> Option<usize> {
+    pub fn label(&self) -> Option<G::Label> {
         self.label
     }
 
@@ -157,14 +158,14 @@ impl Match {
         self.error_distance.is_none()
     }
 
-    pub fn walk(&self) -> impl Iterator<Item = (&Match, EnterExit)> {
+    pub fn walk(&self) -> impl Iterator<Item = (&Self, EnterExit)> {
         Walk {
             initial: false,
             parents: vec![(self, 0)],
         }
     }
 
-    pub fn walk_labelled(&self) -> impl Iterator<Item = (&Match, EnterExit)> {
+    pub fn walk_labelled(&self) -> impl Iterator<Item = (&Self, EnterExit)> {
         self.walk().filter(|(node, _)| node.label().is_some())
     }
 }
@@ -175,13 +176,13 @@ pub enum EnterExit {
     Exit,
 }
 
-struct Walk<'a> {
+struct Walk<'a, G: Grammar> {
     initial: bool,
-    parents: Vec<(&'a Match, usize)>,
+    parents: Vec<(&'a Match<G>, usize)>,
 }
 
-impl<'a> Iterator for Walk<'a> {
-    type Item = (&'a Match, EnterExit);
+impl<'a, G: Grammar> Iterator for Walk<'a, G> {
+    type Item = (&'a Match<G>, EnterExit);
 
     fn next(&mut self) -> Option<Self::Item> {
         if !self.initial {
@@ -206,4 +207,4 @@ impl<'a> Iterator for Walk<'a> {
     }
 }
 
-impl<'a> FusedIterator for Walk<'a> {}
+impl<'a, G: Grammar> FusedIterator for Walk<'a, G> {}
