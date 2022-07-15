@@ -1,6 +1,7 @@
 use crate::core::InstructionId;
 use crate::core::{Class, Instruction, Parser};
 use crate::output::{Codegen, Statements};
+use std::collections::HashSet;
 
 #[derive(Copy, Clone)]
 struct State {
@@ -53,7 +54,12 @@ impl Parser {
         codegen.line("#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]");
         let mut enumeration = codegen.enumeration("Label");
 
-        for (_, label) in self.labels() {
+        let labels = self
+            .labels()
+            .map(|(_, label)| label)
+            .collect::<HashSet<_>>();
+
+        for label in labels {
             let label = self.pascal_case(label);
             enumeration.variant(&label);
         }

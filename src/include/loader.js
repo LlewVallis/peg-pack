@@ -39,10 +39,10 @@ function resolveInstruction(instruction) {
     } else if (instruction instanceof Function) {
         return resolveFunctionRule(instruction);
     } else if (typeof instruction === "string") {
-        let result = empty;
+        let result = g.empty;
 
         for (const codePoint of instruction) {
-            result = seq(result, oneOf(codePoint));
+            result = g.seq(result, g.oneOf(codePoint));
         }
 
         const id = resolveInstruction(result);
@@ -164,7 +164,7 @@ function normalizeRanges(ranges) {
     return ranges.map(normalizeRange);
 }
 
-globalThis.seq = (...rules) => {
+function seq(g, ...rules) {
     const instructions = rules.map(resolveInstruction);
 
     if (instructions.length === 0) {
@@ -180,15 +180,15 @@ globalThis.seq = (...rules) => {
     }
 
     const [first, ...rest] = rules;
-    const restInstruction = seq(...rest);
+    const restInstruction = seq(g, ...rest);
 
     return createInstruction("seq", {
         first: resolveInstruction(first),
         second: resolveInstruction(restInstruction),
     });
-};
+}
 
-globalThis.choice = (...rules) => {
+function choice(g, ...rules) {
     const instructions = rules.map(resolveInstruction);
 
     if (instructions.length === 0) {
@@ -204,25 +204,25 @@ globalThis.choice = (...rules) => {
     }
 
     const [first, ...rest] = rules;
-    const restInstruction = choice(...rest);
+    const restInstruction = choice(g, ...rest);
 
     return createInstruction("choice", {
         first: resolveInstruction(first),
         second: resolveInstruction(restInstruction),
     });
-};
+}
 
-globalThis.notAhead = (...rules) => {
-    const instruction = resolveInstruction(choice(rules));
+function notAhead(g, ...rules) {
+    const instruction = resolveInstruction(g.choice(rules));
     return createInstruction("notAhead", { target: instruction });
-};
+}
 
-globalThis.asError = (rule) => {
+function asError(g, rule) {
     const instruction = resolveInstruction(rule);
     return createInstruction("error", { target: instruction });
-};
+}
 
-globalThis.label = (label, rule) => {
+function label(g, label, rule) {
     if (typeof label !== "string") {
         throw new TypeError("Labels must be a string");
     }
@@ -233,30 +233,81 @@ globalThis.label = (label, rule) => {
 
     const instruction = resolveInstruction(rule);
     return createInstruction("label", { target: instruction, label });
-};
+}
 
-globalThis.oneOf = (...ranges) => {
+function oneOf(g, ...ranges) {
     ranges = normalizeRanges(ranges);
     return createInstruction("class", { negated: false, ranges });
-};
+}
 
-globalThis.noneOf = (...ranges) => {
+function noneOf(g, ...ranges) {
     ranges = normalizeRanges(ranges);
     return createInstruction("class", { negated: true, ranges });
-};
+}
 
-globalThis.empty = () => createInstruction("empty");
+function empty(_g) {
+    return createInstruction("empty");
+}
 
-globalThis.opt = (...instructions) => choice(...instructions, empty);
+function opt(g, ...instructions) {
+    return g.choice(...instructions, g.empty);
+}
 
-globalThis.repOne = (rule, separator = empty) => {
-    const more = () => opt(seq(separator, rule, more));
+function repOne(g, rule, separator = g.empty) {
+    const more = () => g.opt(g.seq(separator, rule, more));
     anonymousRules.add(more);
 
-    return seq(rule, more);
-};
+    return g.seq(rule, more);
+}
 
-globalThis.rep = (rule, separator = empty) => opt(repOne(rule, separator));
+function rep(g, rule, separator = g.empty) {
+    return g.opt(g.repOne(rule, separator));
+}
+
+function whitespace(g, rule) {
+    const ws = g.rep(rule);
+
+    const result = { ...g };
+
+    result.seq = (...rules) => {
+        const newRules = [];
+
+        for (let i = 0; i < rules.length; i++) {
+            if (i !== 0) {
+                newRules.push(ws);
+            }
+
+            newRules.push(rules[i]);
+        }
+
+        return g.seq(...newRules);
+    };
+
+    Object.freeze(result);
+    return result;
+}
+
+function createInterface() {
+    const result = {};
+
+    result.seq = seq.bind(null, result);
+    result.choice = choice.bind(null, result);
+    result.notAhead = notAhead.bind(null, result);
+    result.asError = asError.bind(null, result);
+    result.label = label.bind(null, result);
+    result.oneOf = oneOf.bind(null, result);
+    result.noneOf = noneOf.bind(null, result);
+    result.empty = empty.bind(null, result);
+    result.opt = opt.bind(null, result);
+    result.repOne = repOne.bind(null, result);
+    result.rep = rep.bind(null, result);
+    result.whitespace = whitespace.bind(null, result);
+
+    return result;
+}
+
+globalThis.g = createInterface();
+Object.freeze(g);
 
 process.on("uncaughtException", err => {
     console.error("Uncaught exception:", err);

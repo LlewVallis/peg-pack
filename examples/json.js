@@ -1,57 +1,59 @@
-const value = () => choice(
+const ws = g.whitespace(g.choice(" ", "\n", "\r", "\t"));
+
+const value = () => ws.choice(
     object,
     array,
     string,
     number,
-    label("null", "null"),
-    label("boolean", "true"),
-    label("boolean", "false"),
+    ws.label("null", "null"),
+    ws.label("boolean", "true"),
+    ws.label("boolean", "false"),
 );
 
-const object = () => label("object", seq("{", rep(entry, ","), "}"));
+const object = () => ws.label("object", ws.seq("{", ws.rep(entry, ","), "}"));
 
-const entry = () => label("entry", seq(
-    label("key", string),
+const entry = () => ws.label("entry", ws.seq(
+    ws.label("key", string),
     ":",
-    label("value", value)
+    ws.label("value", value)
 ));
 
-const array = () => label("array", seq("[", rep(value, ","), "]"));
+const array = () => ws.label("array", ws.seq("[", ws.rep(value, ","), "]"));
 
-const string = () => label("string", seq("\"", rep(stringCharacter), "\""));
+const string = () => ws.label("string", g.seq("\"", g.rep(stringCharacter), "\""));
 
-const stringCharacter = () => choice(
-    noneOf([0, 31], [127, 255], "\"", "\\"),
+const stringCharacter = () => g.choice(
+    g.noneOf([0, 31], [127, 255], "\"", "\\"),
     escapeSequence,
 );
 
-const escapeSequence = () => seq(
+const escapeSequence = () => g.seq(
     "\\",
-    choice(
-        choice("\"", "\\", "/", "b", "f", "n", "r", "t"),
-        seq("u", hexDigit, hexDigit, hexDigit, hexDigit),
+    g.choice(
+        g.choice("\"", "\\", "/", "b", "f", "n", "r", "t"),
+        g.seq("u", hexDigit, hexDigit, hexDigit, hexDigit),
     )
 );
 
-const hexDigit = () => oneOf(["0", "9"], ["a", "f"], ["A", "F"]);
+const hexDigit = () => g.oneOf(["0", "9"], ["a", "f"], ["A", "F"]);
 
-const number = () => label("number", seq(
-    opt("-"),
-    choice("0", seq(startDigit, rep(digit))),
-    opt(fractional),
-    opt(exponent),
+const number = () => ws.label("number", g.seq(
+    g.opt("-"),
+    g.choice("0", g.seq(startDigit, g.rep(digit))),
+    g.opt(fractional),
+    g.opt(exponent),
 ));
 
-const fractional = () => seq(".", repOne(digit));
+const fractional = () => g.seq(".", g.repOne(digit));
 
-const exponent = () => seq(
-    choice("e", "E"),
-    opt(choice("+", "-")),
-    repOne(digit),
+const exponent = () => g.seq(
+    g.choice("e", "E"),
+    g.opt(g.choice("+", "-")),
+    g.repOne(digit),
 );
 
-const startDigit = () => oneOf(["1", "9"]);
+const startDigit = () => g.oneOf(["1", "9"]);
 
-const digit = () => oneOf(["0", "9"]);
+const digit = () => g.oneOf(["0", "9"]);
 
 module.exports = value;

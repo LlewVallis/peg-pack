@@ -8,9 +8,9 @@ mod input;
 mod result;
 
 pub use context::Context;
-pub use result::{ParseResult, Match};
 pub use grammar::Grammar;
 pub use input::*;
+pub use result::{Match, ParseResult};
 
 use buffered_iter::BufferedIter;
 use result::EnterExit;
@@ -28,7 +28,8 @@ impl<G: Grammar> GenParseMatch<G> {
         &self,
         iter: &mut BufferedIter<impl Iterator<Item = (&'b Match<G>, EnterExit)>>,
     ) -> bool
-        where G: 'b
+    where
+        G: 'b,
     {
         iter.peek()
             .map(|(_, state)| *state == EnterExit::Enter)
@@ -40,7 +41,8 @@ impl<G: Grammar> GenParseMatch<G> {
         f: &mut Formatter,
         iter: &mut BufferedIter<impl Iterator<Item = (&'b Match<G>, EnterExit)>>,
     ) -> fmt::Result
-        where G: 'b
+    where
+        G: 'b,
     {
         if self.next_is_enter(iter) {
             write!(f, ", ")?;
@@ -67,10 +69,7 @@ impl<G: Grammar> GenParseMatch<G> {
         Ok(())
     }
 
-    fn fmt_normal(
-        &self,
-        f: &mut Formatter,
-    ) -> fmt::Result {
+    fn fmt_normal(&self, f: &mut Formatter) -> fmt::Result {
         let mut iter = BufferedIter::new(self.0.walk_labelled());
 
         while let Some((node, state)) = iter.next() {
@@ -95,10 +94,7 @@ impl<G: Grammar> GenParseMatch<G> {
         Ok(())
     }
 
-    fn fmt_pretty(
-        &self,
-        f: &mut Formatter,
-    ) -> fmt::Result {
+    fn fmt_pretty(&self, f: &mut Formatter) -> fmt::Result {
         let mut iter = BufferedIter::new(self.0.walk_labelled());
         let mut indent = 0;
 
