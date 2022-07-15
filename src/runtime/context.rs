@@ -3,14 +3,9 @@ use std::mem::MaybeUninit;
 
 use super::grammar::Grammar;
 use super::input::Input;
+use super::result::Match;
 use super::result::ParseResult;
 use super::{State, FINISH_STATE};
-
-#[allow(unused)]
-pub fn match_length<I: Input + ?Sized>(input: &I, grammar: &impl Grammar) -> Option<usize> {
-    let result = Context::run(input, grammar);
-    result.match_length()
-}
 
 pub struct Context<'a, I: Input + ?Sized, G: Grammar> {
     input: &'a I,
@@ -21,7 +16,8 @@ pub struct Context<'a, I: Input + ?Sized, G: Grammar> {
 }
 
 impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
-    fn run(input: &I, grammar: &G) -> ParseResult {
+    #[allow(unused)]
+    pub fn run(input: &I, grammar: &G) -> ParseResult {
         Context::new(input, grammar).finish()
     }
 
@@ -132,7 +128,7 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
     }
 
     pub unsafe fn state_seq_middle<const SECOND: State, const CONTINUATION: State>(&mut self) {
-        if self.result().has_matched() {
+        if self.result().is_match() {
             self.stash_result();
             *self.state_mut() = CONTINUATION;
             self.push_state(SECOND);
@@ -143,16 +139,21 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
 
     pub unsafe fn state_seq_end(&mut self) {
         let second = self.pop_result();
-        let first = self.take_result();
+        let first = self.take_result().unwrap_match_unchecked();
 
-        if second.has_matched() {
-            let result = ParseResult::combine_matches(first, second);
-            self.set_result(result);
-        } else {
-            self.position -= first.unwrap_distance_unchecked();
-            let scan_distance = ParseResult::combined_scan_distance(&first, &second);
-            let result = ParseResult::unmatched(scan_distance);
-            self.set_result(result);
+        match second {
+            ParseResult::Matched(second) => {
+                let result = Match::combine(first, second);
+                self.set_result(ParseResult::Matched(result));
+            }
+            ParseResult::Unmatched { scan_distance } => {
+                self.position -= first.distance();
+
+                let scan_distance =
+                    usize::max(first.scan_distance(), first.distance() + scan_distance);
+
+                self.set_result(ParseResult::Unmatched { scan_distance })
+            }
         }
 
         self.pop_state();
@@ -178,23 +179,27 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         let mut second = self.pop_result();
         let first = self.take_result();
 
-        if !first.has_matched() {
-            let result = second.max_scan_distance(first.scan_distance());
+        if !first.is_match() {
+            let result = second.extend_scan_distance(first.scan_distance());
             self.set_result(result);
             self.pop_state();
             return;
         }
 
-        if !second.has_matched() {
-            self.position += first.unwrap_distance_unchecked();
-            let result = first.max_scan_distance(second.scan_distance());
-            self.set_result(result);
+        let first = first.unwrap_match_unchecked();
+
+        if !second.is_match() {
+            self.position += first.distance();
+            let result = first.extend_scan_distance(second.scan_distance());
+            self.set_result(ParseResult::Matched(result));
             self.pop_state();
             return;
         }
 
-        let first_dist = first.unwrap_error_distance_unchecked().unwrap_unchecked();
-        let second_dist = second.unwrap_error_distance_unchecked();
+        let second = second.unwrap_match_unchecked();
+
+        let first_dist = first.error_distance().unwrap_unchecked();
+        let second_dist = second.error_distance();
 
         let use_second = match second_dist {
             Some(second_dist) => first_dist > second_dist,
@@ -202,13 +207,13 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         };
 
         if use_second {
-            let result = second.max_scan_distance(first.scan_distance());
-            self.set_result(result);
+            let result = second.extend_scan_distance(first.scan_distance());
+            self.set_result(ParseResult::Matched(result));
         } else {
-            self.position -= second.unwrap_distance_unchecked();
-            self.position += first.unwrap_distance_unchecked();
-            let result = first.max_scan_distance(second.scan_distance());
-            self.set_result(result);
+            self.position -= second.distance();
+            self.position += first.distance();
+            let result = first.extend_scan_distance(second.scan_distance());
+            self.set_result(ParseResult::Matched(result));
         }
 
         self.pop_state();
@@ -238,6 +243,17 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         self.pop_state();
     }
 
+    pub unsafe fn state_label_start<const TARGET: State, const CONTINUATION: State>(&mut self) {
+        *self.state_mut() = CONTINUATION;
+        self.push_state(TARGET);
+    }
+
+    pub unsafe fn state_label_end(&mut self, label: usize) {
+        let result = self.take_result();
+        self.set_result(result.label(label));
+        self.pop_state();
+    }
+
     pub unsafe fn state_delegate<const TARGET: State>(&mut self) {
         *self.state_mut() = TARGET;
     }
@@ -246,18 +262,20 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         if let Some(char) = self.peek() {
             if in_class(char) {
                 self.position += 1;
-                self.set_result(ParseResult::error_free(1, 1));
+                let result = Match::error_free(1, 1);
+                self.set_result(ParseResult::Matched(result));
                 self.pop_state();
                 return;
             }
         }
 
-        self.set_result(ParseResult::unmatched(1));
+        self.set_result(ParseResult::Unmatched { scan_distance: 1 });
         self.pop_state();
     }
 
     pub unsafe fn state_empty(&mut self) {
-        self.set_result(ParseResult::empty(0));
+        let result = Match::empty(0);
+        self.set_result(ParseResult::Matched(result));
         self.pop_state();
     }
 }

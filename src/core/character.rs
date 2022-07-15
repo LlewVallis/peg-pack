@@ -17,8 +17,9 @@ impl Parser {
             Instruction::Seq(first, second) => self.characterize_seq(first, second, states),
             Instruction::Choice(first, second) => self.characterize_choice(first, second, states),
             Instruction::NotAhead(target) => self.characterize_not_ahead(target, states),
-            Instruction::Error(target) => self.characterize_error(target, states),
-            Instruction::Delegate(target) => self.characterize_delegate(target, states),
+            Instruction::Error(target) => self.characterize_delegate_like(target, states),
+            Instruction::Label(target, _) => self.characterize_delegate_like(target, states),
+            Instruction::Delegate(target) => self.characterize_delegate_like(target, states),
             Instruction::Class(class) => self.characterize_class(class),
             Instruction::Empty => self.characterize_empty(),
         })
@@ -73,21 +74,7 @@ impl Parser {
         }
     }
 
-    fn characterize_error(
-        &self,
-        target: InstructionId,
-        states: &FixedPointStates<Character>,
-    ) -> Character {
-        let target = states[target];
-
-        Character {
-            transparent: target.transparent,
-            antitransparent: target.antitransparent,
-            fallible: target.fallible,
-        }
-    }
-
-    fn characterize_delegate(
+    fn characterize_delegate_like(
         &self,
         target: InstructionId,
         states: &FixedPointStates<Character>,

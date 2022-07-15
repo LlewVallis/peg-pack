@@ -143,6 +143,20 @@ impl Parser {
                 }
                 _ => unreachable!(),
             },
+            Instruction::Label(target, label) => match state.stage {
+                0 => {
+                    self.generate_unary_continuing_dispatch(
+                        &mut function,
+                        "state_label_start",
+                        state,
+                        target,
+                    );
+                }
+                1 => {
+                    function.line(&format!("ctx.state_label_end({});", label.0));
+                }
+                _ => unreachable!(),
+            },
             Instruction::Delegate(id) => {
                 assert_eq!(state.stage, 0);
                 self.generate_unary_consuming_dispatch(&mut function, "state_delegate", id);
@@ -231,6 +245,7 @@ impl Parser {
                 Instruction::Choice(_, _) => 3,
                 Instruction::NotAhead(_) => 2,
                 Instruction::Error(_) => 2,
+                Instruction::Label(_, _) => 2,
                 Instruction::Delegate(_) => 1,
                 Instruction::Class(_) => 1,
                 Instruction::Empty => 1,

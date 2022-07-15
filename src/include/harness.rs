@@ -9,11 +9,8 @@ pub fn main() {
     stdin().read_to_end(&mut input).expect("could not read input");
 
     let start = Instant::now();
-    let result = parser::parse(&input);
-    let elapsed = start.elapsed();
+    let result = parser::parse(input.as_slice());
 
-    match result {
-        Some(match_length) => println!("Matched {} byte(s) in {:.2?}", match_length, elapsed),
-        None => println!("Did not match in {:.2?}", elapsed),
-    }
+    println!("Parsed in {:.1?}", start.elapsed());
+    println!("{:?}", result);
 }

@@ -222,6 +222,19 @@ globalThis.asError = (rule) => {
     return createInstruction("error", { target: instruction });
 };
 
+globalThis.label = (label, rule) => {
+    if (typeof label !== "string") {
+        throw new TypeError("Labels must be a string");
+    }
+
+    if (!/[ -~]+/.test(label)) {
+        throw new TypeError("Labels must match the regex `[ -~]+`");
+    }
+
+    const instruction = resolveInstruction(rule);
+    return createInstruction("label", { target: instruction, label });
+};
+
 globalThis.oneOf = (...ranges) => {
     ranges = normalizeRanges(ranges);
     return createInstruction("class", { negated: false, ranges });

@@ -12,6 +12,7 @@ impl Parser {
         self.trim();
         self.sort();
         self.deduplicate_classes();
+        self.deduplicate_labels();
         self.remove_delegates();
         self.deduplicate();
         self.sort();
@@ -133,6 +134,33 @@ impl Parser {
 
         for removal in removals {
             self.classes.remove(removal);
+        }
+    }
+
+    /// Merge duplicate labels into one
+    fn deduplicate_labels(&mut self) {
+        let mut canonicals = HashMap::new();
+        let mut mappings = HashMap::new();
+        let mut removals = Vec::new();
+
+        for (id, label) in self.labels() {
+            if let Some(canonical_id) = canonicals.get(label) {
+                mappings.insert(id, *canonical_id);
+                removals.push(id);
+            } else {
+                canonicals.insert(label, id);
+                mappings.insert(id, id);
+            }
+        }
+
+        for (_, instruction) in self.instructions.iter_mut() {
+            if let Instruction::Label(_, id) = instruction {
+                *id = mappings[id];
+            }
+        }
+
+        for removal in removals {
+            self.labels.remove(removal);
         }
     }
 
@@ -309,12 +337,16 @@ impl Parser {
             Instruction::Choice(_, _) => hasher.write_usize(1),
             Instruction::NotAhead(_) => hasher.write_u8(2),
             Instruction::Error(_) => hasher.write_u8(3),
-            Instruction::Delegate(_) => hasher.write_u8(4),
+            Instruction::Label(_, label) => {
+                hasher.write_u8(4);
+                hasher.write_usize(label.0);
+            }
+            Instruction::Delegate(_) => hasher.write_u8(5),
             Instruction::Class(class) => {
-                hasher.write_u8(5);
+                hasher.write_u8(6);
                 hasher.write_usize(class.0)
             }
-            Instruction::Empty => hasher.write_u8(6),
+            Instruction::Empty => hasher.write_u8(7),
         }
     }
 

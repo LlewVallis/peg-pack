@@ -3,18 +3,22 @@ const value = () => choice(
     array,
     string,
     number,
-    "null",
-    "true",
-    "false",
+    label("null", "null"),
+    label("boolean", "true"),
+    label("boolean", "false"),
 );
 
-const object = () => seq("{", rep(entry, ","), "}");
+const object = () => label("object", seq("{", rep(entry, ","), "}"));
 
-const entry = () => seq(string, ":", value);
+const entry = () => label("entry", seq(
+    label("key", string),
+    ":",
+    label("value", value)
+));
 
-const array = () => seq("[", rep(value, ","), "]");
+const array = () => label("array", seq("[", rep(value, ","), "]"));
 
-const string = () => seq("\"", rep(stringCharacter), "\"");
+const string = () => label("string", seq("\"", rep(stringCharacter), "\""));
 
 const stringCharacter = () => choice(
     noneOf([0, 31], [127, 255], "\"", "\\"),
@@ -31,12 +35,12 @@ const escapeSequence = () => seq(
 
 const hexDigit = () => oneOf(["0", "9"], ["a", "f"], ["A", "F"]);
 
-const number = () => seq(
+const number = () => label("number", seq(
     opt("-"),
     choice("0", seq(startDigit, rep(digit))),
     opt(fractional),
     opt(exponent),
-);
+));
 
 const fractional = () => seq(".", repOne(digit));
 

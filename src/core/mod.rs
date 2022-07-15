@@ -14,6 +14,7 @@ pub struct Parser {
     start: InstructionId,
     instructions: Store<InstructionId, Instruction>,
     classes: Store<ClassId, Class>,
+    labels: Store<LabelId, String>,
 }
 
 impl Parser {
@@ -22,6 +23,7 @@ impl Parser {
             start: InstructionId(0),
             instructions: Store::new(),
             classes: Store::new(),
+            labels: Store::new(),
         }
     }
 
@@ -58,6 +60,14 @@ impl Parser {
 
     pub fn classes(&self) -> impl Iterator<Item = (ClassId, &Class)> + '_ {
         self.classes.iter()
+    }
+
+    pub fn insert_label(&mut self, label: String) -> LabelId {
+        self.labels.insert(label)
+    }
+
+    pub fn labels(&self) -> impl Iterator<Item = (LabelId, &str)> + '_ {
+        self.labels.iter().map(|(id, label)| (id, label.as_str()))
     }
 
     pub fn compile(mut self) -> Result<String, HashSet<Error>> {
@@ -121,11 +131,25 @@ impl StoreKey for ClassId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
+pub struct LabelId(pub usize);
+
+impl StoreKey for LabelId {
+    fn from_usize(value: usize) -> Self {
+        Self(value)
+    }
+
+    fn into_usize(self) -> usize {
+        self.0
+    }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Instruction {
     Seq(InstructionId, InstructionId),
     Choice(InstructionId, InstructionId),
     NotAhead(InstructionId),
     Error(InstructionId),
+    Label(InstructionId, LabelId),
     Delegate(InstructionId),
     Class(ClassId),
     Empty,
@@ -139,6 +163,7 @@ impl Instruction {
             }
             Instruction::NotAhead(target)
             | Instruction::Error(target)
+            | Instruction::Label(target, _)
             | Instruction::Delegate(target) => (Some(target), None),
             Instruction::Class(_) | Instruction::Empty => (None, None),
         };
@@ -154,6 +179,7 @@ impl Instruction {
             }
             Instruction::NotAhead(target) => Instruction::NotAhead(mapper(target)),
             Instruction::Error(target) => Instruction::Error(mapper(target)),
+            Instruction::Label(target, label) => Instruction::Label(mapper(target), label),
             Instruction::Delegate(target) => Instruction::Delegate(mapper(target)),
             Instruction::Class(_) | Instruction::Empty => *self,
         }

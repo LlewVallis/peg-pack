@@ -7,6 +7,7 @@ impl Parser {
 
         self.visualize_instructions(&mut result);
         self.visualize_classes(&mut result);
+        self.visualize_labels(&mut result);
         self.visualize_components(&mut result);
 
         result.push_str("}");
@@ -33,6 +34,10 @@ impl Parser {
                 | Instruction::Delegate(target) => {
                     result.push_str(&format!("    i{} -> i{};\n", id.0, target.0));
                 }
+                Instruction::Label(target, label) => {
+                    result.push_str(&format!("    i{} -> i{};\n", id.0, target.0));
+                    result.push_str(&format!("    i{} -> l{};\n", id.0, label.0));
+                }
                 Instruction::Class(class) => {
                     result.push_str(&format!("    i{} -> c{};\n", id.0, class.0));
                 }
@@ -50,6 +55,7 @@ impl Parser {
             Instruction::NotAhead(_) => "Not ahead",
             Instruction::Error(_) => "Error",
             Instruction::Delegate(_) => "Delegate",
+            Instruction::Label(_, _) => "Label",
             Instruction::Class(_) => "Class",
             Instruction::Empty => "Empty",
         };
@@ -112,6 +118,19 @@ impl Parser {
                 .replace('"', "\\\"")
         } else {
             format!("0x{:x}", bound)
+        }
+    }
+
+    fn visualize_labels(&self, result: &mut String) {
+        for (id, label) in self.labels() {
+            let specifier = format!("{:?}", label)
+                .replace('\\', "\\\\")
+                .replace('"', "\\\"");
+
+            result.push_str(&format!(
+                "    l{}[label=\"{} #{}\", shape=box];\n",
+                id.0, specifier, id.0
+            ));
         }
     }
 

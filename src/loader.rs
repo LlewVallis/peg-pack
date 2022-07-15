@@ -1,3 +1,4 @@
+use regex::Regex;
 use std::collections::HashMap;
 
 use serde::de::Error;
@@ -75,6 +76,11 @@ impl Loader {
                 let target = self.load_reference(*target)?;
                 self.parser.insert(Instruction::Error(target))
             }
+            InstructionIr::Label { target, label, .. } => {
+                let label = self.parser.insert_label(label.clone());
+                let target = self.load_reference(*target)?;
+                self.parser.insert(Instruction::Label(target, label))
+            }
             InstructionIr::Delegate { target, .. } => {
                 let target = self.load_reference(*target)?;
                 self.parser.insert(Instruction::Delegate(target))
@@ -99,6 +105,7 @@ impl Loader {
             | InstructionIr::Choice { rule_name, .. }
             | InstructionIr::NotAhead { rule_name, .. }
             | InstructionIr::Error { rule_name, .. }
+            | InstructionIr::Label { rule_name, .. }
             | InstructionIr::Delegate { rule_name, .. }
             | InstructionIr::Class { rule_name, .. }
             | InstructionIr::Empty { rule_name } => {
@@ -154,6 +161,12 @@ enum InstructionIr {
     #[serde(rename_all = "camelCase")]
     Error { target: usize, rule_name: String },
     #[serde(rename_all = "camelCase")]
+    Label {
+        target: usize,
+        label: String,
+        rule_name: String,
+    },
+    #[serde(rename_all = "camelCase")]
     Delegate { target: usize, rule_name: String },
     #[serde(rename_all = "camelCase")]
     Class {
@@ -176,5 +189,19 @@ impl<'a> Deserialize<'a> for VersionCheck {
         } else {
             Err(D::Error::custom("invalid version"))
         }
+    }
+}
+
+struct Label(String);
+
+impl<'a> Deserialize<'a> for Label {
+    fn deserialize<D: Deserializer<'a>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = String::deserialize(deserializer)?;
+
+        if !Regex::new("[ -~]+").unwrap().is_match(&value) {
+            return Err(D::Error::custom("invalid label"));
+        }
+
+        Ok(Label(value))
     }
 }

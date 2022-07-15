@@ -33,6 +33,10 @@ const OUT_DIR_FILES: &[(&str, &[u8])] = &[
         "build/runtime/result.rs",
         include_bytes!("runtime/result.rs"),
     ),
+    (
+        "build/runtime/buffered_iter.rs",
+        include_bytes!("runtime/buffered_iter.rs"),
+    ),
     ("build/harness.rs", include_bytes!("include/harness.rs")),
     ("build/loader.js", include_bytes!("include/loader.js")),
     (".gitignore", include_bytes!("include/gitignore")),

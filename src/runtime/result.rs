@@ -1,18 +1,103 @@
 use std::hint::unreachable_unchecked;
+use std::iter::FusedIterator;
 
-pub struct ParseResult {
-    kind: ParseResultKind,
-    scan_distance: usize,
+pub enum ParseResult {
+    Matched(Match),
+    Unmatched { scan_distance: usize },
 }
 
 impl ParseResult {
-    pub fn unmatched(scan_distance: usize) -> Self {
-        Self {
-            scan_distance,
-            kind: ParseResultKind::Unmatched,
+    pub fn is_match(&self) -> bool {
+        match self {
+            Self::Matched(_) => true,
+            Self::Unmatched { .. } => false,
         }
     }
 
+    pub fn is_error_free(&self) -> bool {
+        match self {
+            Self::Matched(value) => value.is_error_free(),
+            Self::Unmatched { .. } => false,
+        }
+    }
+
+    pub fn scan_distance(&self) -> usize {
+        match self {
+            Self::Matched(value) => value.scan_distance(),
+            Self::Unmatched { scan_distance } => *scan_distance,
+        }
+    }
+
+    pub fn distance(&self) -> usize {
+        match self {
+            Self::Matched(value) => value.distance(),
+            Self::Unmatched { .. } => 0,
+        }
+    }
+
+    pub fn extend_scan_distance(self, amount: usize) -> Self {
+        match self {
+            Self::Matched(value) => Self::Matched(value.extend_scan_distance(amount)),
+            Self::Unmatched { scan_distance } => Self::Unmatched {
+                scan_distance: scan_distance.max(amount),
+            },
+        }
+    }
+
+    pub unsafe fn unwrap_match_unchecked(self) -> Match {
+        match self {
+            Self::Matched(value) => value,
+            Self::Unmatched { .. } => unreachable_unchecked(),
+        }
+    }
+
+    pub fn negate(self) -> Self {
+        match self {
+            Self::Matched(value) => Self::Unmatched {
+                scan_distance: value.scan_distance(),
+            },
+            Self::Unmatched { scan_distance } => Self::Matched(Match::empty(scan_distance)),
+        }
+    }
+
+    pub fn mark_error(mut self) -> Self {
+        match &mut self {
+            ParseResult::Matched(value) => {
+                value.error_distance = Some(0);
+            }
+            ParseResult::Unmatched { .. } => {}
+        }
+
+        self
+    }
+
+    pub fn label(self, label: usize) -> Self {
+        match self {
+            ParseResult::Matched(value) => {
+                let new_value = Match {
+                    label: Some(label),
+                    scan_distance: value.scan_distance,
+                    distance: value.distance,
+                    error_distance: value.error_distance,
+                    children: vec![value],
+                };
+
+                ParseResult::Matched(new_value)
+            }
+            ParseResult::Unmatched { .. } => self,
+        }
+    }
+}
+
+pub struct Match {
+    label: Option<usize>,
+    scan_distance: usize,
+    distance: usize,
+    error_distance: Option<usize>,
+    children: Vec<Match>,
+}
+
+impl Match {
     pub fn empty(scan_distance: usize) -> Self {
         Self::error_free(0, scan_distance)
     }
@@ -20,37 +105,40 @@ impl ParseResult {
     pub fn error_free(distance: usize, scan_distance: usize) -> Self {
         Self {
             scan_distance,
-            kind: ParseResultKind::Matched(Match::error_free(distance)),
+            distance,
+            label: None,
+            error_distance: None,
+            children: Vec::new(),
         }
     }
 
-    pub unsafe fn combine_matches(first: Self, second: Self) -> Self {
-        let scan_distance = Self::combined_scan_distance(&first, &second);
+    pub fn combine(first: Self, second: Self) -> Self {
+        let scan_distance = usize::max(first.scan_distance, first.distance + second.scan_distance);
 
-        let first_distance = first.unwrap_distance_unchecked();
-        let second_distance = second.unwrap_distance_unchecked();
-        let distance = first_distance + second_distance;
+        let distance = first.distance + second.distance;
 
-        let first_error_distance = first.unwrap_error_distance_unchecked();
-        let second_error_distance = second.unwrap_error_distance_unchecked();
+        let error_distance = first.error_distance.or_else(|| {
+            second
+                .error_distance
+                .map(|distance| first.distance + distance)
+        });
 
-        let error_distance = first_error_distance
-            .or_else(|| second_error_distance.map(|distance| first_distance + distance));
-
-        let value = Match {
+        Self {
+            label: None,
+            scan_distance,
             distance,
             error_distance,
             children: vec![first, second],
-        };
-
-        Self {
-            kind: ParseResultKind::Matched(value),
-            scan_distance,
         }
     }
 
-    pub fn combined_scan_distance(first: &Self, second: &Self) -> usize {
-        usize::max(first.scan_distance, first.distance() + second.scan_distance)
+    pub fn extend_scan_distance(mut self, amount: usize) -> Self {
+        self.scan_distance = self.scan_distance.max(amount);
+        self
+    }
+
+    pub fn label(&self) -> Option<usize> {
+        self.label
     }
 
     pub fn scan_distance(&self) -> usize {
@@ -58,93 +146,64 @@ impl ParseResult {
     }
 
     pub fn distance(&self) -> usize {
-        match &self.kind {
-            ParseResultKind::Matched(value) => value.distance,
-            ParseResultKind::Unmatched => 0,
-        }
+        self.distance
     }
 
-    pub unsafe fn unwrap_distance_unchecked(&self) -> usize {
-        match &self.kind {
-            ParseResultKind::Matched(value) => value.distance,
-            ParseResultKind::Unmatched => unreachable_unchecked(),
-        }
-    }
-
-    pub unsafe fn unwrap_error_distance_unchecked(&self) -> Option<usize> {
-        match &self.kind {
-            ParseResultKind::Matched(value) => value.error_distance,
-            ParseResultKind::Unmatched => unreachable_unchecked(),
-        }
-    }
-
-    pub fn match_length(&self) -> Option<usize> {
-        match &self.kind {
-            ParseResultKind::Matched(value) => Some(value.distance),
-            ParseResultKind::Unmatched => None,
-        }
-    }
-
-    pub fn has_matched(&self) -> bool {
-        match &self.kind {
-            ParseResultKind::Matched(_) => true,
-            ParseResultKind::Unmatched => false,
-        }
+    pub fn error_distance(&self) -> Option<usize> {
+        self.error_distance
     }
 
     pub fn is_error_free(&self) -> bool {
-        match &self.kind {
-            ParseResultKind::Matched(value) => value.error_distance.is_none(),
-            ParseResultKind::Unmatched => false,
+        self.error_distance.is_none()
+    }
+
+    pub fn walk(&self) -> impl Iterator<Item = (&Match, EnterExit)> {
+        Walk {
+            initial: false,
+            parents: vec![(self, 0)],
         }
     }
 
-    pub fn max_scan_distance(mut self, scan_distance: usize) -> Self {
-        self.scan_distance = self.scan_distance.max(scan_distance);
-        self
+    pub fn walk_labelled(&self) -> impl Iterator<Item = (&Match, EnterExit)> {
+        self.walk().filter(|(node, _)| node.label().is_some())
     }
+}
 
-    pub fn negate(mut self) -> Self {
-        match &mut self.kind {
-            ParseResultKind::Matched(_) => {
-                self.kind = ParseResultKind::Matched(Match::error_free(0))
-            }
-            ParseResultKind::Unmatched => self.kind = ParseResultKind::Matched(Match::empty()),
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub enum EnterExit {
+    Enter,
+    Exit,
+}
+
+struct Walk<'a> {
+    initial: bool,
+    parents: Vec<(&'a Match, usize)>,
+}
+
+impl<'a> Iterator for Walk<'a> {
+    type Item = (&'a Match, EnterExit);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if !self.initial {
+            let (node, _) = unsafe { self.parents.first().unwrap_unchecked() };
+
+            self.initial = true;
+            return Some((node, EnterExit::Enter));
         }
 
-        self
-    }
+        let (node, child_index) = self.parents.last_mut()?;
+        let node = *node;
+        let index = *child_index;
 
-    pub fn mark_error(mut self) -> Self {
-        if let ParseResultKind::Matched(value) = &mut self.kind {
-            value.error_distance = Some(0);
+        if node.children.len() == index {
+            self.parents.pop();
+            return Some((node, EnterExit::Exit));
         }
 
-        self
+        *child_index += 1;
+        self.parents.push((&node.children[index], 0));
+        Some((&node.children[index], EnterExit::Enter))
     }
 }
 
-enum ParseResultKind {
-    Matched(Match),
-    Unmatched,
-}
-
-struct Match {
-    distance: usize,
-    error_distance: Option<usize>,
-    children: Vec<ParseResult>,
-}
-
-impl Match {
-    pub fn empty() -> Self {
-        Self::error_free(0)
-    }
-
-    pub fn error_free(distance: usize) -> Self {
-        Self {
-            distance,
-            error_distance: None,
-            children: Vec::new(),
-        }
-    }
-}
+impl<'a> FusedIterator for Walk<'a> {}
