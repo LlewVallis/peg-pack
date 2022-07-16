@@ -39,6 +39,7 @@ const OUT_DIR_FILES: &[(&str, &[u8])] = &[
     ),
     ("build/harness.rs", include_bytes!("include/harness.rs")),
     ("build/loader.js", include_bytes!("include/loader.js")),
+    ("loader.d.ts", include_bytes!("include/loader.d.ts")),
     (".gitignore", include_bytes!("include/gitignore")),
 ];
 

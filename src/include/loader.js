@@ -126,8 +126,8 @@ function normalizeBound(bound) {
         throw new RangeError("Range bounds must be integers");
     }
 
-    if (bound < 0 || bound >= 2 ** 32) {
-        throw new RangeError("Range bounds must in [0, 2^32)");
+    if (bound < 0 || bound > 255) {
+        throw new RangeError("Range bounds must be between 0 and 255");
     }
 
     return bound;
@@ -249,8 +249,8 @@ function empty(_g) {
     return createInstruction("empty");
 }
 
-function opt(g, ...instructions) {
-    return g.choice(...instructions, g.empty);
+function opt(g, ...rules) {
+    return g.choice(...rules, g.empty);
 }
 
 function repOne(g, rule, separator = g.empty) {
