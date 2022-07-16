@@ -1,5 +1,6 @@
 mod cli;
 mod core;
+mod generation;
 mod loader;
 mod output;
 mod runtime;

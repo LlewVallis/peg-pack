@@ -25,7 +25,7 @@ function createInstruction(name, object) {
 }
 
 function buildInstruction(name, object) {
-    let ruleName = "<anonymous>";
+    let ruleName = undefined;
     if (ruleNameStack.length > 0) {
         ruleName = ruleNameStack[ruleNameStack.length - 1];
     }
@@ -167,49 +167,27 @@ function normalizeRanges(ranges) {
 function seq(g, ...rules) {
     const instructions = rules.map(resolveInstruction);
 
-    if (instructions.length === 0) {
-        return createInstruction("empty");
+    let result = createInstruction("empty");
+
+    for (const instruction of instructions) {
+        const resultInstruction = resolveInstruction(result);
+        result = createInstruction("seq", { first: resultInstruction, second: instruction });
     }
 
-    if (instructions.length === 1) {
-        return createInstruction("delegate", { target: instructions[0] });
-    }
-
-    if (instructions.length === 2) {
-        return createInstruction("seq", { first: instructions[0], second: instructions[1] });
-    }
-
-    const [first, ...rest] = rules;
-    const restInstruction = seq(g, ...rest);
-
-    return createInstruction("seq", {
-        first: resolveInstruction(first),
-        second: resolveInstruction(restInstruction),
-    });
+    return result;
 }
 
 function choice(g, ...rules) {
     const instructions = rules.map(resolveInstruction);
 
-    if (instructions.length === 0) {
-        return createInstruction("class", { negated: false, ranges: [] });
+    let result = createInstruction("class", { negated: false, ranges: [] });
+
+    for (const instruction of instructions) {
+        const resultInstruction = resolveInstruction(result);
+        result = createInstruction("choice", { first: resultInstruction, second: instruction });
     }
 
-    if (instructions.length === 1) {
-        return createInstruction("delegate", { target: instructions[0] });
-    }
-
-    if (instructions.length === 2) {
-        return createInstruction("choice", { first: instructions[0], second: instructions[1] });
-    }
-
-    const [first, ...rest] = rules;
-    const restInstruction = choice(g, ...rest);
-
-    return createInstruction("choice", {
-        first: resolveInstruction(first),
-        second: resolveInstruction(restInstruction),
-    });
+    return result;
 }
 
 function notAhead(g, ...rules) {

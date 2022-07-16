@@ -186,7 +186,7 @@ impl Parser {
                     );
                 }
                 1 => {
-                    let label = &self.labels[label];
+                    let label = self.unwrap_label(label);
                     let label = self.pascal_case(label);
                     function.line(&format!("ctx.state_label_end(Label::{});", label));
                 }

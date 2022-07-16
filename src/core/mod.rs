@@ -1,6 +1,5 @@
 mod character;
 mod fixed_point;
-mod generation;
 mod graphvis;
 mod optimization;
 mod structure;
@@ -68,6 +67,10 @@ impl Parser {
 
     pub fn labels(&self) -> impl Iterator<Item = (LabelId, &str)> + '_ {
         self.labels.iter().map(|(id, label)| (id, label.as_str()))
+    }
+
+    pub fn unwrap_label(&self, id: LabelId) -> &str {
+        &self.labels[id]
     }
 
     pub fn compile(mut self) -> Result<String, HashSet<Error>> {

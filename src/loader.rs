@@ -109,7 +109,8 @@ impl Loader {
             | InstructionIr::Delegate { rule_name, .. }
             | InstructionIr::Class { rule_name, .. }
             | InstructionIr::Empty { rule_name } => {
-                self.rule_names.insert(id, rule_name);
+                let name = rule_name.unwrap_or_else(|| String::from("<anonymous>"));
+                self.rule_names.insert(id, name);
             }
         }
 
@@ -148,34 +149,34 @@ enum InstructionIr {
     Seq {
         first: usize,
         second: usize,
-        rule_name: String,
+        rule_name: Option<String>,
     },
     #[serde(rename_all = "camelCase")]
     Choice {
         first: usize,
         second: usize,
-        rule_name: String,
+        rule_name: Option<String>,
     },
     #[serde(rename_all = "camelCase")]
-    NotAhead { target: usize, rule_name: String },
+    NotAhead { target: usize, rule_name: Option<String> },
     #[serde(rename_all = "camelCase")]
-    Error { target: usize, rule_name: String },
+    Error { target: usize, rule_name: Option<String> },
     #[serde(rename_all = "camelCase")]
     Label {
         target: usize,
         label: String,
-        rule_name: String,
+        rule_name: Option<String>,
     },
     #[serde(rename_all = "camelCase")]
-    Delegate { target: usize, rule_name: String },
+    Delegate { target: usize, rule_name: Option<String> },
     #[serde(rename_all = "camelCase")]
     Class {
         negated: bool,
         ranges: Vec<(u8, u8)>,
-        rule_name: String,
+        rule_name: Option<String>,
     },
     #[serde(rename_all = "camelCase")]
-    Empty { rule_name: String },
+    Empty { rule_name: Option<String> },
 }
 
 struct VersionCheck;
