@@ -230,7 +230,10 @@ impl Parser {
                 mappings,
             );
         } else {
-            canonicals.insert(component_hash, start);
+            for start in &component.instructions {
+                let hash = self.create_canonical_hash(*start, component, mappings);
+                canonicals.insert(hash, *start);
+            }
         }
     }
 

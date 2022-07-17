@@ -36,7 +36,8 @@ cases!(
     deduplicate_class,
     deduplicate_label,
     deduplicate_components,
-    deduplicate_component_instructions
+    deduplicate_rotated_components,
+    deduplicate_component_instructions,
 );
 
 fn test(input: &[u8], expected: &[u8]) {

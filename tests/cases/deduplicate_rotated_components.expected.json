@@ -1,7 +1,7 @@
 {
   "start": 0,
   "instructions": [
-    { "seq": [1, 1] },
+    { "seq": [1, 2] },
     { "choice": [2, 4] },
     { "seq": [3, 1] },
     { "class": 0 },
