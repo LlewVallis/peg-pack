@@ -21,7 +21,7 @@ impl State {
 }
 
 impl Parser {
-    pub(super) fn generate(self) -> String {
+    pub fn generate(self) -> String {
         let mut codegen = Codegen::new();
 
         codegen.line("// Generated");

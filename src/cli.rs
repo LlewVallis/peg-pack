@@ -1,11 +1,10 @@
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::{fs, io, panic};
 use std::fs::File;
 use std::io::{ErrorKind, Write};
 use std::panic::PanicInfo;
 use std::path::{Path, PathBuf};
-use std::process::{exit, Command, Output};
+use std::process::{Command, exit, Output};
 use std::time::Instant;
-use std::{fs, io, panic};
 
 use atty::Stream;
 use clap::CommandFactory;
@@ -14,8 +13,7 @@ use clap::Parser as CliParser;
 use regex::bytes::Regex;
 use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
 
-use crate::core::{Error, InstructionId, Parser};
-use crate::loader;
+use crate::core::{Error, Parser};
 
 /// A list of paths and contents to copy into the build directory
 const OUT_DIR_FILES: &[(&str, &[u8])] = &[
@@ -135,8 +133,8 @@ impl Context {
         self.execute_grammar();
 
         self.set_indicator("Generating parser");
-        let (parser, rule_names) = self.load_parser();
-        self.generate_code(parser, rule_names);
+        let parser = self.load_parser();
+        self.generate_code(parser);
 
         self.set_indicator("Compiling");
         self.compile();
@@ -149,8 +147,8 @@ impl Context {
         self.println(format!("Parser built in {:.1?}", self.start.elapsed()));
     }
 
-    /// Load the generated IR file into a parser and instruction rule names
-    fn load_parser(&mut self) -> (Parser, HashMap<InstructionId, String>) {
+    /// Load the generated IR file into a parser
+    fn load_parser(&mut self) -> Parser {
         let ir = match fs::read(self.ir_file()) {
             Ok(ir) => ir,
             Err(err) => {
@@ -158,67 +156,46 @@ impl Context {
             }
         };
 
-        match loader::load_ir(&ir) {
-            Ok(result) => result,
-            Err(err) => {
-                self.exit_with_error(err);
+        match Parser::load(&ir) {
+            Ok(parser) => parser,
+            Err(Error::Load(message)) => self.exit_with_error(message),
+            Err(Error::LeftRecursive(left_recursive)) => {
+                self.print_error_heading();
+
+                if left_recursive.len() == 1 {
+                    self.print("Ill-formed grammar, ");
+                    self.print_color(Color::Yellow, false);
+                    self.print(left_recursive.iter().next().unwrap());
+                    self.print_reset();
+                    self.println(" is left-recursive");
+                } else {
+                    self.print("Ill-formed grammar, the following rules are left-recursive: ");
+
+                    for (i, rule) in left_recursive.iter().enumerate() {
+                        if i != 0 {
+                            self.print(", ");
+                        }
+
+                        self.print_color(Color::Yellow, false);
+                        self.print(rule);
+                        self.print_reset();
+                    }
+
+                    self.println("");
+                }
+
+                exit(1);
             }
         }
     }
 
     /// Generate the Rust code for the parser
-    fn generate_code(&mut self, parser: Parser, rule_names: HashMap<InstructionId, String>) {
-        let code = match parser.compile() {
-            Ok(code) => code,
-            Err(errors) => self.handle_grammar_errors(errors, rule_names),
-        };
+    fn generate_code(&mut self, parser: Parser) {
+        let code = parser.generate();
 
         if let Err(err) = fs::write(self.parser_file(), code) {
             self.exit_with_error(format!("Could not write generated code: {}", err));
         }
-    }
-
-    /// Print a nice error message for grammar errors, then exit
-    fn handle_grammar_errors(
-        &mut self,
-        errors: HashSet<Error>,
-        rule_names: HashMap<InstructionId, String>,
-    ) -> ! {
-        let mut left_recursive = BTreeSet::new();
-
-        for error in errors {
-            match error {
-                Error::LeftRecursion(id) => {
-                    left_recursive.insert(&rule_names[&id]);
-                }
-            }
-        }
-
-        self.print_error_heading();
-
-        if left_recursive.len() == 1 {
-            self.print("Ill-formed grammar, ");
-            self.print_color(Color::Yellow, false);
-            self.print(left_recursive.iter().next().unwrap());
-            self.print_reset();
-            self.println(" is left-recursive");
-        } else {
-            self.print("Ill-formed grammar, the following rules are left-recursive: ");
-
-            for (i, rule) in left_recursive.iter().enumerate() {
-                if i != 0 {
-                    self.print(", ");
-                }
-
-                self.print_color(Color::Yellow, false);
-                self.print(rule);
-                self.print_reset();
-            }
-
-            self.println("");
-        }
-
-        exit(1);
     }
 
     /// Compile the parser into an executable

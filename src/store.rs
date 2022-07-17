@@ -4,6 +4,8 @@ use std::fmt::{Debug, Formatter};
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
+use serde::{Serialize, Serializer};
+use serde::ser::SerializeSeq;
 
 pub trait StoreKey: Copy + Eq + Ord + Hash {
     fn from_usize(value: usize) -> Self;
@@ -51,10 +53,6 @@ impl<K: StoreKey, V> Store<K, V> {
         self.map.remove(&id.into_usize());
     }
 
-    pub fn contains(&self, id: K) -> bool {
-        self.map.contains_key(&id.into_usize())
-    }
-
     pub fn iter(&self) -> impl Iterator<Item = (K, &V)> {
         self.map.iter().map(|(k, v)| (K::from_usize(*k), v))
     }
@@ -95,5 +93,20 @@ impl<K: StoreKey, V: PartialEq> PartialEq<Self> for Store<K, V> {
 impl<K, V: Debug> Debug for Store<K, V> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Debug::fmt(&self.map, f)
+    }
+}
+
+impl<K, V: Serialize> Serialize for Store<K, V> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let maximum = self.map.keys().map(|value| value + 1).max().unwrap_or(0);
+
+        let mut seq = serializer.serialize_seq(Some(maximum))?;
+
+        for i in 0..maximum {
+            let value = self.map.get(&i);
+            seq.serialize_element(&value)?;
+        }
+
+        seq.end()
     }
 }

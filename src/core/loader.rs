@@ -9,22 +9,24 @@ use crate::core::{Class, Instruction, InstructionId, Parser};
 /// Required IR file version
 const VERSION: u32 = 0;
 
-/// Load some IR into a parser and rule name map, or fail with an error message
-pub fn load_ir(bytes: &[u8]) -> Result<(Parser, HashMap<InstructionId, String>), String> {
-    let ir = match serde_json::from_slice::<Ir>(bytes) {
-        Ok(ir) => ir,
-        Err(err) => return Err(format!("Malformed internal representation ({})", err)),
-    };
+impl Parser {
+    /// Load some IR into a parser and rule name map, or fail with an error message
+    pub(super) fn load_ir(bytes: &[u8]) -> Result<(Self, HashMap<InstructionId, String>), String> {
+        let ir = match serde_json::from_slice::<Ir>(bytes) {
+            Ok(ir) => ir,
+            Err(err) => return Err(format!("Malformed internal representation ({})", err)),
+        };
 
-    let mut loader = Loader {
-        parser: Parser::new(),
-        rule_names: HashMap::new(),
-        instruction_count: 0,
-    };
+        let mut loader = Loader {
+            parser: Parser::new(),
+            rule_names: HashMap::new(),
+            instruction_count: 0,
+        };
 
-    loader.load_ir(ir)?;
+        loader.load_ir(ir)?;
 
-    Ok((loader.parser, loader.rule_names))
+        Ok((loader.parser, loader.rule_names))
+    }
 }
 
 struct Loader {

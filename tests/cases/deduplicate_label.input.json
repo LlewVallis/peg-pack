@@ -1,0 +1,20 @@
+{
+  "version": 0,
+  "status": "success",
+  "start": 0,
+  "instructions": [
+    {
+      "name": "label",
+      "label": "foo",
+      "target": 1
+    },
+    {
+      "name": "label",
+      "label": "foo",
+      "target": 2
+    },
+    {
+      "name": "empty"
+    }
+  ]
+}

@@ -1,12 +1,16 @@
+use std::collections::{BTreeSet};
+use serde::Serialize;
+
+use crate::store::{Store, StoreKey};
+
 mod character;
 mod fixed_point;
 mod graphvis;
 mod optimization;
 mod structure;
 mod validation;
-
-use crate::store::{Store, StoreKey};
-use std::collections::HashSet;
+mod loader;
+mod generation;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Parser {
@@ -17,7 +21,53 @@ pub struct Parser {
 }
 
 impl Parser {
-    pub fn new() -> Self {
+    pub fn load(ir: &[u8]) -> Result<Parser, Error> {
+        let (mut parser, rule_names) = match Self::load_ir(ir) {
+            Ok(result) => result,
+            Err(err) => return Err(Error::Load(err)),
+        };
+
+        let errors = parser.validate();
+
+        if !errors.is_empty() {
+            let mut left_recursive = BTreeSet::new();
+
+            for error in errors {
+                match error {
+                    ValidationError::LeftRecursion(id) => {
+                        left_recursive.insert(rule_names[&id].clone());
+                    }
+                }
+            }
+
+            return Err(Error::LeftRecursive(left_recursive));
+        }
+
+        parser.optimize();
+
+        Ok(parser)
+    }
+
+    pub fn dump_json(&self) -> String {
+        #[derive(Serialize)]
+        struct Proxy<'a> {
+            start: &'a InstructionId,
+            instructions: &'a Store<InstructionId, Instruction>,
+            classes: &'a Store<ClassId, Class>,
+            labels: &'a Store<LabelId, String>,
+        }
+
+        let proxy = Proxy {
+            start: &self.start,
+            instructions: &self.instructions,
+            classes: &self.classes,
+            labels: &self.labels,
+        };
+
+        serde_json::to_string(&proxy).unwrap()
+    }
+
+    fn new() -> Self {
         Self {
             start: InstructionId(0),
             instructions: Store::new(),
@@ -26,63 +76,42 @@ impl Parser {
         }
     }
 
-    pub fn reserve(&mut self) -> InstructionId {
-        self.instructions.reserve()
-    }
-
-    pub fn insert(&mut self, instruction: Instruction) -> InstructionId {
-        let id = self.reserve();
-        self.set(id, instruction);
+    fn insert(&mut self, instruction: Instruction) -> InstructionId {
+        let id = self.instructions.reserve();
+        self.instructions.set(id, instruction);
         id
     }
 
-    pub fn set(&mut self, id: InstructionId, instruction: Instruction) {
-        assert!(!self.instructions.contains(id));
-        self.instructions.set(id, instruction);
-    }
-
-    pub fn instructions(&self) -> impl Iterator<Item = (InstructionId, Instruction)> + '_ {
+    fn instructions(&self) -> impl Iterator<Item = (InstructionId, Instruction)> + '_ {
         self.instructions.iter_copied()
     }
 
-    pub fn start(&self) -> InstructionId {
+    fn start(&self) -> InstructionId {
         self.start
     }
 
-    pub fn start_mut(&mut self) -> &mut InstructionId {
+    fn start_mut(&mut self) -> &mut InstructionId {
         &mut self.start
     }
 
-    pub fn insert_class(&mut self, class: Class) -> ClassId {
+    fn insert_class(&mut self, class: Class) -> ClassId {
         self.classes.insert(class)
     }
 
-    pub fn classes(&self) -> impl Iterator<Item = (ClassId, &Class)> + '_ {
+    fn classes(&self) -> impl Iterator<Item = (ClassId, &Class)> + '_ {
         self.classes.iter()
     }
 
-    pub fn insert_label(&mut self, label: String) -> LabelId {
+    fn insert_label(&mut self, label: String) -> LabelId {
         self.labels.insert(label)
     }
 
-    pub fn labels(&self) -> impl Iterator<Item = (LabelId, &str)> + '_ {
+    fn labels(&self) -> impl Iterator<Item = (LabelId, &str)> + '_ {
         self.labels.iter().map(|(id, label)| (id, label.as_str()))
     }
 
-    pub fn unwrap_label(&self, id: LabelId) -> &str {
+    fn unwrap_label(&self, id: LabelId) -> &str {
         &self.labels[id]
-    }
-
-    pub fn compile(mut self) -> Result<String, HashSet<Error>> {
-        let errors = self.validate();
-
-        if !errors.is_empty() {
-            return Err(errors);
-        }
-
-        self.optimize();
-
-        Ok(self.generate())
     }
 
     fn relabel(&mut self, mapper: impl Fn(InstructionId) -> InstructionId) {
@@ -107,8 +136,8 @@ impl Parser {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
-pub struct InstructionId(pub usize);
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Serialize)]
+struct InstructionId(pub usize);
 
 impl StoreKey for InstructionId {
     fn from_usize(value: usize) -> Self {
@@ -120,8 +149,8 @@ impl StoreKey for InstructionId {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
-pub struct ClassId(pub usize);
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Serialize)]
+struct ClassId(pub usize);
 
 impl StoreKey for ClassId {
     fn from_usize(value: usize) -> Self {
@@ -133,8 +162,8 @@ impl StoreKey for ClassId {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
-pub struct LabelId(pub usize);
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Serialize)]
+struct LabelId(pub usize);
 
 impl StoreKey for LabelId {
     fn from_usize(value: usize) -> Self {
@@ -146,8 +175,9 @@ impl StoreKey for LabelId {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
-pub enum Instruction {
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Serialize)]
+#[serde(rename_all = "camelCase")]
+enum Instruction {
     Seq(InstructionId, InstructionId),
     Choice(InstructionId, InstructionId),
     NotAhead(InstructionId),
@@ -189,8 +219,8 @@ impl Instruction {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Hash)]
-pub struct Class {
+#[derive(Debug, Eq, PartialEq, Hash, Serialize)]
+struct Class {
     negated: bool,
     ranges: Vec<(u8, u8)>,
 }
@@ -236,7 +266,13 @@ impl Class {
     }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug)]
 pub enum Error {
+    LeftRecursive(BTreeSet<String>),
+    Load(String),
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+enum ValidationError {
     LeftRecursion(InstructionId),
 }

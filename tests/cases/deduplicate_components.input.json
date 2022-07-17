@@ -1,0 +1,38 @@
+{
+  "version": 0,
+  "status": "success",
+  "start": 0,
+  "instructions": [
+    {
+      "name": "seq",
+      "first": 3,
+      "second": 5
+    },
+    {
+      "name": "class",
+      "negated": true,
+      "ranges": []
+    },
+    {"name": "empty" },
+    {
+      "name": "choice",
+      "first": 4,
+      "second": 2
+    },
+    {
+      "name": "seq",
+      "first": 1,
+      "second": 3
+    },
+    {
+      "name": "choice",
+      "first": 6,
+      "second": 2
+    },
+    {
+      "name": "seq",
+      "first": 1,
+      "second": 5
+    }
+  ]
+}

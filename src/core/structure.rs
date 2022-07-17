@@ -108,7 +108,7 @@ impl Parser {
 }
 
 /// A list of strongly connected components in the instruction graph
-pub struct Components {
+pub(super) struct Components {
     /// A map of each instruction to it's component's ID
     pub instruction_components: HashMap<InstructionId, ComponentId>,
     /// The set of strongly connected components
@@ -138,7 +138,7 @@ impl StoreKey for ComponentId {
 }
 
 /// A strongly connected component in the instruction graph
-pub struct Component {
+pub(super) struct Component {
     /// The set of instructions in the component
     pub instructions: BTreeSet<InstructionId>,
     /// The set of instructions in other components that are referenced by

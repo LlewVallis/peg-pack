@@ -1,0 +1,27 @@
+{
+  "version": 0,
+  "status": "success",
+  "start": 0,
+  "instructions": [
+    {
+      "name": "seq",
+      "first": 2,
+      "second": 3
+    },
+    {
+      "name": "class",
+      "negated": true,
+      "ranges": []
+    },
+    {
+      "name": "seq",
+      "first": 1,
+      "second": 0
+    },
+    {
+      "name": "seq",
+      "first": 1,
+      "second": 0
+    }
+  ]
+}

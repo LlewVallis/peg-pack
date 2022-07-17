@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Llew Vallis <llewvallis@gmail.com>"]
 edition = "2021"
 description = "Optimizing parser generator for PEG grammars"
+readme = "README.md"
+repository = "https://github.com/LlewVallis/peg-pack"
+license = "MIT"
 
 [dependencies]
 bimap = "0.6.2"

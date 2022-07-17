@@ -1,10 +1,4 @@
-mod cli;
-mod core;
-mod generation;
-mod loader;
-mod output;
-mod runtime;
-mod store;
+use peg_pack::cli;
 
 fn main() {
     cli::setup_panic_hook();

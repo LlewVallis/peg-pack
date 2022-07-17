@@ -1,0 +1,10 @@
+{
+  "version": 0,
+  "status": "success",
+  "start": 0,
+  "instructions": [
+    {
+      "name": "empty"
+    }
+  ]
+}

@@ -1,12 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::core::character::Character;
-use crate::core::{Error, InstructionId};
+use crate::core::{ValidationError, InstructionId};
 use crate::core::{Instruction, Parser};
 
 impl Parser {
     /// Finds errors in the grammar
-    pub(super) fn validate(&self) -> HashSet<Error> {
+    pub(super) fn validate(&self) -> HashSet<ValidationError> {
         let characters = self.characterize();
 
         let mut errors = HashSet::new();
@@ -14,7 +14,7 @@ impl Parser {
         for (id, _) in self.instructions() {
             let mut visited = HashSet::new();
             if self.can_reach(id, id, &mut visited, &characters) {
-                errors.insert(Error::LeftRecursion(id));
+                errors.insert(ValidationError::LeftRecursion(id));
             }
         }
 

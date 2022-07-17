@@ -7,7 +7,7 @@ impl Parser {
     /// until a fixed point is reached. That is, it allows evaluating functions
     /// that are defined recursively over an instruction's children even in the
     /// presence of cycles
-    pub fn solve_fixed_point<T: Eq>(
+    pub(super) fn solve_fixed_point<T: Eq>(
         &self,
         default: T,
         mut evaluate: impl FnMut(InstructionId, Instruction, &FixedPointStates<T>) -> T,

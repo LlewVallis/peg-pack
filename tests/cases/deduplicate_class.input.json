@@ -1,0 +1,22 @@
+{
+  "version": 0,
+  "status": "success",
+  "start": 0,
+  "instructions": [
+    {
+      "name": "seq",
+      "first": 1,
+      "second": 2
+    },
+    {
+      "name": "class",
+      "negated": false,
+      "ranges": [[4, 8]]
+    },
+    {
+      "name": "class",
+      "negated": false,
+      "ranges": [[4, 8]]
+    }
+  ]
+}

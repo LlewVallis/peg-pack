@@ -1,0 +1,14 @@
+{
+  "version": 0,
+  "status": "success",
+  "start": 0,
+  "instructions": [
+    {
+      "name": "delegate",
+      "target": 1
+    },
+    {
+      "name": "empty"
+    }
+  ]
+}

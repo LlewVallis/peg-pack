@@ -1,0 +1,15 @@
+{
+  "version": 0,
+  "status": "success",
+  "start": 1,
+  "instructions": [
+    {
+      "name": "empty"
+    },
+    {
+      "name": "seq",
+      "first": 0,
+      "second": 0
+    }
+  ]
+}
