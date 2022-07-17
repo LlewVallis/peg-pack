@@ -72,6 +72,10 @@ impl<G: Grammar> GenParseMatch<G> {
     fn fmt_normal(&self, f: &mut Formatter) -> fmt::Result {
         let mut iter = BufferedIter::new(self.0.walk_labelled());
 
+        if iter.peek().is_none() {
+            return write!(f, "Match");
+        }
+
         while let Some((node, state)) = iter.next() {
             match state {
                 EnterExit::Enter => {
@@ -97,6 +101,10 @@ impl<G: Grammar> GenParseMatch<G> {
     fn fmt_pretty(&self, f: &mut Formatter) -> fmt::Result {
         let mut iter = BufferedIter::new(self.0.walk_labelled());
         let mut indent = 0;
+
+        if iter.peek().is_none() {
+            return write!(f, "Match");
+        }
 
         while let Some((node, state)) = iter.next() {
             match state {

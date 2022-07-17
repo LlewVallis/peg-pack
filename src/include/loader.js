@@ -164,7 +164,7 @@ function normalizeRanges(ranges) {
     return ranges.map(normalizeRange);
 }
 
-function seq(g, ...rules) {
+function seq(...rules) {
     const instructions = rules.map(resolveInstruction);
 
     let result = createInstruction("empty");
@@ -177,7 +177,7 @@ function seq(g, ...rules) {
     return result;
 }
 
-function choice(g, ...rules) {
+function choice(...rules) {
     const instructions = rules.map(resolveInstruction);
 
     let result = createInstruction("class", { negated: false, ranges: [] });
@@ -190,17 +190,17 @@ function choice(g, ...rules) {
     return result;
 }
 
-function notAhead(g, ...rules) {
-    const instruction = resolveInstruction(g.choice(rules));
+function notAhead(...rules) {
+    const instruction = resolveInstruction(this.choice(rules));
     return createInstruction("notAhead", { target: instruction });
 }
 
-function asError(g, rule) {
+function asError(rule) {
     const instruction = resolveInstruction(rule);
     return createInstruction("error", { target: instruction });
 }
 
-function label(g, label, rule) {
+function label(label, rule) {
     if (typeof label !== "string") {
         throw new TypeError("Labels must be a string");
     }
@@ -213,41 +213,43 @@ function label(g, label, rule) {
     return createInstruction("label", { target: instruction, label });
 }
 
-function oneOf(g, ...ranges) {
+function oneOf(...ranges) {
     ranges = normalizeRanges(ranges);
     return createInstruction("class", { negated: false, ranges });
 }
 
-function noneOf(g, ...ranges) {
+function noneOf(...ranges) {
     ranges = normalizeRanges(ranges);
     return createInstruction("class", { negated: true, ranges });
 }
 
-function empty(_g) {
+function empty() {
     return createInstruction("empty");
 }
 
-function opt(g, ...rules) {
-    return g.choice(...rules, g.empty);
+function opt(...rules) {
+    return this.choice(...rules, this.empty);
 }
 
-function repOne(g, rule, separator = g.empty) {
-    const more = () => g.opt(g.seq(separator, rule, more));
+function repOne(rule, separator = this.empty) {
+    const more = () => this.opt(this.seq(separator, rule, more));
     anonymousRules.add(more);
 
-    return g.seq(rule, more);
+    return this.seq(rule, more);
 }
 
-function rep(g, rule, separator = g.empty) {
-    return g.opt(g.repOne(rule, separator));
+function rep(rule, separator = this.empty) {
+    return this.opt(this.repOne(rule, separator));
 }
 
-function whitespace(g, rule) {
-    const ws = g.rep(rule);
+function whitespace(rule) {
+    const ws = this.rep(rule);
 
-    const result = { ...g };
+    const base = interfaceBases.get(this);
+    const newBase = { ...base };
 
-    result.seq = (...rules) => {
+    const oldSeq = this.seq;
+    newBase.seq = (...rules) => {
         const newRules = [];
 
         for (let i = 0; i < rules.length; i++) {
@@ -258,34 +260,52 @@ function whitespace(g, rule) {
             newRules.push(rules[i]);
         }
 
-        return g.seq(...newRules);
+        return oldSeq(...newRules);
     };
 
-    Object.freeze(result);
-    return result;
+    return prepareInterface(newBase);
 }
 
-function createInterface() {
+const interfaceBases = new WeakMap();
+
+function prepareInterface(base) {
     const result = {};
 
-    result.seq = seq.bind(null, result);
-    result.choice = choice.bind(null, result);
-    result.notAhead = notAhead.bind(null, result);
-    result.asError = asError.bind(null, result);
-    result.label = label.bind(null, result);
-    result.oneOf = oneOf.bind(null, result);
-    result.noneOf = noneOf.bind(null, result);
-    result.empty = empty.bind(null, result);
-    result.opt = opt.bind(null, result);
-    result.repOne = repOne.bind(null, result);
-    result.rep = rep.bind(null, result);
-    result.whitespace = whitespace.bind(null, result);
+    result.seq = base.seq.bind(result);
+    result.choice = base.choice.bind(result);
+    result.notAhead = base.notAhead.bind(result);
+    result.asError = base.asError.bind(result);
+    result.label = base.label.bind(result);
+    result.oneOf = base.oneOf.bind(result);
+    result.noneOf = base.noneOf.bind(result);
+    result.empty = base.empty.bind(result);
+    result.opt = base.opt.bind(result);
+    result.repOne = base.repOne.bind(result);
+    result.rep = base.rep.bind(result);
+    result.whitespace = base.whitespace.bind(result);
+
+    anonymousRules.add(base.empty);
+
+    interfaceBases.set(result, base);
+    Object.freeze(result);
 
     return result;
 }
 
-globalThis.g = createInterface();
-Object.freeze(g);
+globalThis.g = prepareInterface({
+    seq,
+    choice,
+    notAhead,
+    asError,
+    label,
+    oneOf,
+    noneOf,
+    empty,
+    opt,
+    repOne,
+    rep,
+    whitespace,
+});
 
 process.on("uncaughtException", err => {
     console.error("Uncaught exception:", err);
