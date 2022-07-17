@@ -32,6 +32,7 @@ macro_rules! cases {
 cases!(
     empty,
     reorder_from_start,
+    trim,
     eliminate_delegates,
     deduplicate_class,
     deduplicate_label,

@@ -6,7 +6,7 @@ use crate::store::{Store, StoreKey};
 mod character;
 mod fixed_point;
 mod graphvis;
-mod optimization;
+mod transformation;
 mod structure;
 mod validation;
 mod load;
@@ -43,7 +43,7 @@ impl Parser {
             return Err(Error::LeftRecursive(left_recursive));
         }
 
-        parser.optimize();
+        parser.transform();
 
         Ok(parser)
     }

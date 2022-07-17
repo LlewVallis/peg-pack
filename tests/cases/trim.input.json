@@ -1,0 +1,20 @@
+{
+  "version": 0,
+  "status": "success",
+  "start": 0,
+  "instructions": [
+    {
+      "name": "empty"
+    },
+    {
+      "name": "class",
+      "negated": false,
+      "ranges": []
+    },
+    {
+      "name": "label",
+      "target": 0,
+      "label": "foo"
+    }
+  ]
+}

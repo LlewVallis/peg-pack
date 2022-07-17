@@ -1,115 +1,16 @@
-use seahash::SeaHasher;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::hash::Hasher;
-
+use seahash::SeaHasher;
+use crate::core::{Instruction, InstructionId, Parser};
 use crate::core::structure::{Component, ComponentId, Components};
-use crate::core::InstructionId;
-use crate::core::{Instruction, Parser};
 
 impl Parser {
-    /// Optimize the parser, cannot be run on an ill-formed grammar
-    pub(super) fn optimize(&mut self) {
-        self.trim();
-        self.sort();
+    pub(super) fn deduplicate(&mut self) {
         self.deduplicate_classes();
         self.deduplicate_labels();
-        self.remove_delegates();
-        self.deduplicate();
-        self.sort();
+        self.deduplicate_components();
     }
-
-    /// Remove all unreachable instructions and classes
-    fn trim(&mut self) {
-        self.trim_instructions();
-        self.trim_classes();
-    }
-
-    fn trim_instructions(&mut self) {
-        let mut reachable = HashSet::new();
-
-        let mut queue = vec![self.start];
-        while let Some(id) = queue.pop() {
-            if reachable.insert(id) {
-                let instruction = self.instructions[id];
-                queue.extend(instruction.successors());
-            }
-        }
-
-        let removals = self
-            .instructions()
-            .map(|(k, _)| k)
-            .filter(|id| !reachable.contains(id))
-            .collect::<Vec<_>>();
-
-        for removal in removals {
-            self.instructions.remove(removal);
-        }
-    }
-
-    fn trim_classes(&mut self) {
-        let mut reachable = HashSet::new();
-
-        for (_, instruction) in self.instructions() {
-            if let Instruction::Class(class) = instruction {
-                reachable.insert(class);
-            }
-        }
-
-        let removals = self
-            .classes()
-            .map(|(k, _)| k)
-            .filter(|id| !reachable.contains(id))
-            .collect::<Vec<_>>();
-
-        for removal in removals {
-            self.classes.remove(removal);
-        }
-    }
-
-    /// Sort the instructions in the map by a depth first search. This is not actually necessary,
-    /// but makes the visualizations nicer
-    fn sort(&mut self) {
-        let mut mappings = HashMap::new();
-        self.sort_visit(self.start, &mut mappings);
-        self.relabel(|id| mappings[&id]);
-    }
-
-    fn sort_visit(&self, id: InstructionId, mappings: &mut HashMap<InstructionId, InstructionId>) {
-        if mappings.contains_key(&id) {
-            return;
-        }
-
-        mappings.insert(id, InstructionId(mappings.len()));
-
-        let instruction = self.instructions[id];
-        for successor in instruction.successors() {
-            self.sort_visit(successor, mappings);
-        }
-    }
-
-    /// Elides all delegates in the graph
-    fn remove_delegates(&mut self) {
-        let mut mappings = HashMap::new();
-
-        for (id, _) in self.instructions() {
-            let resolved = self.resolve_delegates(id);
-
-            if id != resolved {
-                mappings.insert(id, self.resolve_delegates(id));
-            }
-        }
-
-        self.remap(|id| Self::follow_mappings(id, &mappings));
-        self.trim_instructions();
-    }
-
-    fn resolve_delegates(&self, id: InstructionId) -> InstructionId {
-        match self.instructions[id] {
-            Instruction::Delegate(target) => self.resolve_delegates(target),
-            _ => id,
-        }
-    }
-
+    
     /// Merge duplicate classes into one
     fn deduplicate_classes(&mut self) {
         let mut canonicals = HashMap::new();
@@ -172,7 +73,7 @@ impl Parser {
     /// In order to determine equality between two components, a high quality
     /// hash is used. This hash, however, depends on the starting instruction
     /// of the component
-    fn deduplicate(&mut self) {
+    fn deduplicate_components(&mut self) {
         let components = self.separate_components();
 
         let mut mappings = HashMap::new();
@@ -188,7 +89,7 @@ impl Parser {
         );
 
         self.remap(|id| Self::follow_mappings(id, &mappings));
-        self.trim_instructions();
+        self.trim();
     }
 
     /// Performs a depth first search of all components, remapping if a
@@ -390,18 +291,5 @@ impl Parser {
         } else {
             canonicals.insert(canonical, id);
         }
-    }
-
-    /// Look up the mapped ID of an instruction, potentially following multiple
-    /// mappings
-    fn follow_mappings(
-        mut id: InstructionId,
-        mappings: &HashMap<InstructionId, InstructionId>,
-    ) -> InstructionId {
-        while let Some(new_id) = mappings.get(&id) {
-            id = *new_id;
-        }
-
-        id
     }
 }
