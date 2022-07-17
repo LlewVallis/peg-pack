@@ -176,6 +176,20 @@ impl Parser {
                 }
                 _ => unreachable!(),
             },
+            Instruction::Commit(id) => match state.stage {
+                0 => {
+                    self.generate_unary_continuing_dispatch(
+                        &mut function,
+                        "state_commit_start",
+                        state,
+                        id,
+                    );
+                }
+                1 => {
+                    function.line("ctx.state_commit_end();");
+                }
+                _ => unreachable!(),
+            },
             Instruction::Label(target, label) => match state.stage {
                 0 => {
                     self.generate_unary_continuing_dispatch(
@@ -280,6 +294,7 @@ impl Parser {
                 Instruction::Choice(_, _) => 3,
                 Instruction::NotAhead(_) => 2,
                 Instruction::Error(_) => 2,
+                Instruction::Commit(_) => 2,
                 Instruction::Label(_, _) => 2,
                 Instruction::Delegate(_) => 1,
                 Instruction::Class(_) => 1,

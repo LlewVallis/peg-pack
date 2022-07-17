@@ -72,6 +72,17 @@ impl<G: Grammar> ParseResult<G> {
         self
     }
 
+    pub fn commit(mut self) -> Self {
+        match &mut self {
+            ParseResult::Matched(value) => {
+                value.error_distance = None;
+            }
+            ParseResult::Unmatched { .. } => {}
+        }
+
+        self
+    }
+
     pub fn label(self, label: G::Label) -> Self {
         match self {
             ParseResult::Matched(value) => {

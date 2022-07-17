@@ -200,6 +200,11 @@ function asError(rule) {
     return createInstruction("error", { target: instruction });
 }
 
+function commit(rule) {
+    const instruction = resolveInstruction(rule);
+    return createInstruction("commit", { target: instruction });
+}
+
 function label(label, rule) {
     if (typeof label !== "string") {
         throw new TypeError("Labels must be a string");
@@ -228,7 +233,10 @@ function empty() {
 }
 
 function opt(...rules) {
-    return this.choice(...rules, this.empty);
+    return this.choice(
+        this.commit(this.choice(...rules)),
+        this.empty
+    );
 }
 
 function repOne(rule, separator = this.empty) {
@@ -271,18 +279,9 @@ const interfaceBases = new WeakMap();
 function prepareInterface(base) {
     const result = {};
 
-    result.seq = base.seq.bind(result);
-    result.choice = base.choice.bind(result);
-    result.notAhead = base.notAhead.bind(result);
-    result.asError = base.asError.bind(result);
-    result.label = base.label.bind(result);
-    result.oneOf = base.oneOf.bind(result);
-    result.noneOf = base.noneOf.bind(result);
-    result.empty = base.empty.bind(result);
-    result.opt = base.opt.bind(result);
-    result.repOne = base.repOne.bind(result);
-    result.rep = base.rep.bind(result);
-    result.whitespace = base.whitespace.bind(result);
+    for (const key of Object.keys(base)) {
+        result[key] = base[key].bind(result);
+    }
 
     anonymousRules.add(base.empty);
 
@@ -297,6 +296,7 @@ globalThis.g = prepareInterface({
     choice,
     notAhead,
     asError,
+    commit,
     label,
     oneOf,
     noneOf,
