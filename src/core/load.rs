@@ -78,10 +78,6 @@ impl Loader {
                 let target = self.load_reference(*target)?;
                 self.parser.insert(Instruction::Error(target))
             }
-            InstructionIr::Commit { target, .. } => {
-                let target = self.load_reference(*target)?;
-                self.parser.insert(Instruction::Commit(target))
-            }
             InstructionIr::Label { target, label, .. } => {
                 let label = self.parser.insert_label(label.clone());
                 let target = self.load_reference(*target)?;
@@ -112,7 +108,6 @@ impl Loader {
             | InstructionIr::Choice { rule_name, .. }
             | InstructionIr::NotAhead { rule_name, .. }
             | InstructionIr::Error { rule_name, .. }
-            | InstructionIr::Commit { rule_name, .. }
             | InstructionIr::Label { rule_name, .. }
             | InstructionIr::Delegate { rule_name, .. }
             | InstructionIr::Class { rule_name, .. }
@@ -173,11 +168,6 @@ enum InstructionIr {
     },
     #[serde(rename_all = "camelCase")]
     Error {
-        target: usize,
-        rule_name: Option<String>,
-    },
-    #[serde(rename_all = "camelCase")]
-    Commit {
         target: usize,
         rule_name: Option<String>,
     },

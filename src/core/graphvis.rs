@@ -31,7 +31,6 @@ impl Parser {
                 }
                 Instruction::NotAhead(target)
                 | Instruction::Error(target)
-                | Instruction::Commit(target)
                 | Instruction::Delegate(target) => {
                     result.push_str(&format!("    i{} -> i{};\n", id.0, target.0));
                 }
@@ -55,7 +54,6 @@ impl Parser {
             Instruction::Choice(_, _) => "Choice",
             Instruction::NotAhead(_) => "Not ahead",
             Instruction::Error(_) => "Error",
-            Instruction::Commit(_) => "Commit",
             Instruction::Delegate(_) => "Delegate",
             Instruction::Label(_, _) => "Label",
             Instruction::Class(_) => "Class",

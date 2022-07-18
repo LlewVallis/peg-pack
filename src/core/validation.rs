@@ -52,7 +52,6 @@ impl Parser {
             }
             Instruction::NotAhead(target)
             | Instruction::Error(target)
-            | Instruction::Commit(target)
             | Instruction::Label(target, _)
             | Instruction::Delegate(target) => self.can_reach(base, target, visited, characters),
             Instruction::Class(_) | Instruction::Sync | Instruction::Empty => false,

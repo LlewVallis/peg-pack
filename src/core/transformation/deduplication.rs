@@ -233,7 +233,6 @@ impl Parser {
             Instruction::Choice(_, _) => hasher.write_usize(1),
             Instruction::NotAhead(_) => hasher.write_u8(2),
             Instruction::Error(_) => hasher.write_u8(3),
-            Instruction::Commit(_) => hasher.write_u8(4),
             Instruction::Label(_, label) => {
                 hasher.write_u8(5);
                 hasher.write_usize(label.0);

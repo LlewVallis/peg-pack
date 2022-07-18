@@ -48,6 +48,14 @@ interface GrammarInterface {
   readonly choice: (...rules: RuleLike[]) => Rule;
 
   /**
+   * Matches the first rule that successfully matches regardless of error
+   * status.
+   *
+   * Equivalent to `choice(first, seq(notAhead(first), second))`.
+   */
+  readonly strictChoice: (...rules: RuleLike[]) => Rule;
+
+  /**
    * Matches the empty string if none of the provided rules would match,
    * otherwise does not match. Always matches if no rules are provided.
    */
@@ -57,12 +65,6 @@ interface GrammarInterface {
    * Matches the provided rule, transforming it into an error if it does match.
    */
   readonly asError: (rule: RuleLike) => Rule;
-
-  /**
-   * Matches the provided rule, converting it to an error-free match if it had
-   * any errors.
-   */
-  readonly commit: (rule: RuleLike) => Rule;
 
   /**
    * Matches the provided rule, wrapping it in a label if it does match.
@@ -94,9 +96,9 @@ interface GrammarInterface {
   readonly empty: () => Rule;
 
   /**
-   * Optionally matches one of the provided rules and commits the result.
+   * Optionally matches one of the provided rules.
    *
-   * Equivalent to `choice(commit(choice(...rules)), empty)`.
+   * Equivalent to `strictChoice(commit(choice(...rules)), empty)`.
    */
   readonly opt: (...rules: RuleLike[]) => Rule;
 
@@ -105,17 +107,15 @@ interface GrammarInterface {
    * until it no longer matches. If the rule matches on the first attempt the
    * entire repetition will match, otherwise it will not. If a separator is
    * provided it will be matched before each additional match of the base rule.
-   * Matches of the rule after the first are committed.
    *
    * Equivalent to `more = opt(seq(separator, rule, more)); seq(rule, more)`.
    */
   readonly repOne: (rule: RuleLike, separator?: RuleLike) => Rule;
 
   /**
-   * Matches the provided rule as many times as possible, committing the
-   * result. If the rule cannot be matched at all, the empty string is matched.
-   * If a separator is provided, it will be matched in between each match of
-   * the base rule.
+   * Matches the provided rule as many times as possible. If the rule cannot be
+   * matched at all, the empty string is matched. If a separator is provided,
+   * it will be matched in between each match of the base rule.
    *
    * Equivalent to `opt(repOne(rule, separator))`.
    */

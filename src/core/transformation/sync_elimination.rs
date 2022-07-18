@@ -118,7 +118,6 @@ impl Parser {
             }
             Instruction::NotAhead(target)
             | Instruction::Error(target)
-            | Instruction::Commit(target)
             | Instruction::Label(target, _)
             | Instruction::Delegate(target) => {
                 first_successor = Some(target);

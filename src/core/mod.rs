@@ -182,7 +182,6 @@ enum Instruction {
     Choice(InstructionId, InstructionId),
     NotAhead(InstructionId),
     Error(InstructionId),
-    Commit(InstructionId),
     Label(InstructionId, LabelId),
     Delegate(InstructionId),
     Class(ClassId),
@@ -198,7 +197,6 @@ impl Instruction {
             }
             Instruction::NotAhead(target)
             | Instruction::Error(target)
-            | Instruction::Commit(target)
             | Instruction::Label(target, _)
             | Instruction::Delegate(target) => (Some(target), None),
             Instruction::Class(_) | Instruction::Sync | Instruction::Empty => (None, None),
@@ -215,7 +213,6 @@ impl Instruction {
             }
             Instruction::NotAhead(target) => Instruction::NotAhead(mapper(target)),
             Instruction::Error(target) => Instruction::Error(mapper(target)),
-            Instruction::Commit(target) => Instruction::Commit(mapper(target)),
             Instruction::Label(target, label) => Instruction::Label(mapper(target), label),
             Instruction::Delegate(target) => Instruction::Delegate(mapper(target)),
             Instruction::Class(_) | Instruction::Sync | Instruction::Empty => *self,

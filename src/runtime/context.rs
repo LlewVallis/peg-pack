@@ -243,17 +243,6 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         self.pop_state();
     }
 
-    pub unsafe fn state_commit_start<const TARGET: State, const CONTINUATION: State>(&mut self) {
-        *self.state_mut() = CONTINUATION;
-        self.push_state(TARGET);
-    }
-
-    pub unsafe fn state_commit_end(&mut self) {
-        let result = self.take_result();
-        self.set_result(result.commit());
-        self.pop_state();
-    }
-
     pub unsafe fn state_label_start<const TARGET: State, const CONTINUATION: State>(&mut self) {
         *self.state_mut() = CONTINUATION;
         self.push_state(TARGET);

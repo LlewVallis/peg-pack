@@ -18,7 +18,6 @@ impl Parser {
             Instruction::Choice(first, second) => self.characterize_choice(first, second, states),
             Instruction::NotAhead(target) => self.characterize_not_ahead(target, states),
             Instruction::Error(target)
-            | Instruction::Commit(target)
             | Instruction::Label(target, _)
             | Instruction::Delegate(target) => self.characterize_delegate_like(target, states),
             Instruction::Class(class) => self.characterize_class(class),

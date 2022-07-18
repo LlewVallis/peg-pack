@@ -190,6 +190,20 @@ function choice(...rules) {
     return result;
 }
 
+function strictChoice(...rules) {
+    const instructions = rules.map(resolveInstruction);
+
+    let result = createInstruction("class", { negated: false, ranges: [] });
+
+    for (const instruction of instructions) {
+        const strictInstruction = g.seq(g.notAhead(result), instruction);
+        const resultInstruction = resolveInstruction(result);
+        result = createInstruction("choice", { first: resultInstruction, second: strictInstruction });
+    }
+
+    return result;
+}
+
 function notAhead(...rules) {
     const instruction = resolveInstruction(this.choice(...rules));
     return createInstruction("notAhead", { target: instruction });
@@ -198,11 +212,6 @@ function notAhead(...rules) {
 function asError(rule) {
     const instruction = resolveInstruction(rule);
     return createInstruction("error", { target: instruction });
-}
-
-function commit(rule) {
-    const instruction = resolveInstruction(rule);
-    return createInstruction("commit", { target: instruction });
 }
 
 function label(label, rule) {
@@ -237,8 +246,8 @@ function empty() {
 }
 
 function opt(...rules) {
-    return this.choice(
-        this.commit(this.choice(...rules)),
+    return this.strictChoice(
+        this.choice(...rules),
         this.empty
     );
 }
@@ -305,9 +314,9 @@ function prepareInterface(base) {
 globalThis.g = prepareInterface({
     seq,
     choice,
+    strictChoice,
     notAhead,
     asError,
-    commit,
     label,
     oneOf,
     noneOf,
