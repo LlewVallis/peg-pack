@@ -7,8 +7,8 @@ mod deduplication;
 mod delegate_elimination;
 mod linearization;
 mod sort;
-mod trim;
 mod sync_elimination;
+mod trim;
 
 impl Parser {
     /// Transform and optimize the parser, cannot be run on an ill-formed grammar

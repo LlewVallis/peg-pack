@@ -56,4 +56,4 @@ const startDigit = () => g.oneOf(["1", "9"]);
 
 const digit = () => g.oneOf(["0", "9"]);
 
-module.exports = value;
+module.exports = ws.seq(ws.empty, value, ws.eof);

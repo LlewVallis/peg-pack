@@ -191,7 +191,7 @@ function choice(...rules) {
 }
 
 function notAhead(...rules) {
-    const instruction = resolveInstruction(this.choice(rules));
+    const instruction = resolveInstruction(this.choice(...rules));
     return createInstruction("notAhead", { target: instruction });
 }
 
@@ -254,6 +254,14 @@ function rep(rule, separator = this.empty) {
     return this.opt(this.repOne(rule, separator));
 }
 
+function any() {
+    return this.noneOf();
+}
+
+function eof() {
+    return this.notAhead(this.any);
+}
+
 function whitespace(rule) {
     const ws = this.rep(rule);
 
@@ -285,10 +293,8 @@ function prepareInterface(base) {
 
     for (const key of Object.keys(base)) {
         result[key] = base[key].bind(result);
+        anonymousRules.add(result[key]);
     }
-
-    anonymousRules.add(base.sync);
-    anonymousRules.add(base.empty);
 
     interfaceBases.set(result, base);
     Object.freeze(result);
@@ -310,6 +316,8 @@ globalThis.g = prepareInterface({
     opt,
     repOne,
     rep,
+    any,
+    eof,
     whitespace,
 });
 

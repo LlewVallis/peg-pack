@@ -122,6 +122,20 @@ interface GrammarInterface {
   readonly rep: (rule: RuleLike, separator?: RuleLike) => Rule;
 
   /**
+   * Matches any single character.
+   *
+   * Equivalent to `noneOf()`.
+   */
+  readonly any: () => Rule;
+
+  /**
+   * Matches the empty string if the end of input has been reached.
+   *
+   * Equivalent to `notAhead(any)`.
+   */
+  readonly eof: () => Rule;
+
+  /**
    * Constructs a variant of this parser interface whose operators match any
    * number of occurrences of the provided rule between matches of rule
    * operands. This affects the `seq`, `repOne` and `rep` operators but does

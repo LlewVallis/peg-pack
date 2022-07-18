@@ -1,6 +1,6 @@
-use std::collections::{BTreeSet, HashMap, HashSet};
-use crate::core::{Class, Instruction, InstructionId, Parser};
 use crate::core::character::Character;
+use crate::core::{Class, Instruction, InstructionId, Parser};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 impl Parser {
     pub(super) fn resolve_syncs(&mut self) {
@@ -56,7 +56,8 @@ impl Parser {
         recoveries: &BTreeSet<InstructionId>,
         characters: &HashMap<InstructionId, Character>,
     ) {
-        let recoveries = recoveries.iter()
+        let recoveries = recoveries
+            .iter()
             .copied()
             .filter(|recovery| {
                 let mut visited = HashSet::new();
@@ -84,7 +85,7 @@ impl Parser {
         base: InstructionId,
         id: InstructionId,
         visited: &mut HashSet<InstructionId>,
-        characters: &HashMap<InstructionId, Character>
+        characters: &HashMap<InstructionId, Character>,
     ) -> bool {
         if base == id && !visited.is_empty() {
             return true;
@@ -115,16 +116,14 @@ impl Parser {
                 first_successor = Some(first);
                 second_successor = Some(second);
             }
-            Instruction::NotAhead(target) |
-            Instruction::Error(target) |
-            Instruction::Commit(target) |
-            Instruction::Label(target, _) |
-            Instruction::Delegate(target) => {
+            Instruction::NotAhead(target)
+            | Instruction::Error(target)
+            | Instruction::Commit(target)
+            | Instruction::Label(target, _)
+            | Instruction::Delegate(target) => {
                 first_successor = Some(target);
             }
-            Instruction::Class(_) |
-            Instruction::Sync |
-            Instruction::Empty => {}
+            Instruction::Class(_) | Instruction::Sync | Instruction::Empty => {}
         }
 
         let mut result = false;

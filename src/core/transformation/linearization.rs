@@ -40,7 +40,8 @@ impl Parser {
         assert!(touched.insert(new_id));
 
         let instruction = self.instructions[new_id];
-        let new_instruction = instruction.remapped(|id| self.linearize_instruction(id, mappings, ancestors, touched));
+        let new_instruction =
+            instruction.remapped(|id| self.linearize_instruction(id, mappings, ancestors, touched));
 
         self.instructions[new_id] = new_instruction;
 
