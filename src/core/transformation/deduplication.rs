@@ -1,8 +1,8 @@
+use crate::core::structure::{Component, ComponentId, Components};
+use crate::core::{Instruction, InstructionId, Parser};
+use seahash::SeaHasher;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::hash::Hasher;
-use seahash::SeaHasher;
-use crate::core::{Instruction, InstructionId, Parser};
-use crate::core::structure::{Component, ComponentId, Components};
 
 impl Parser {
     pub(super) fn deduplicate(&mut self) {
@@ -10,7 +10,7 @@ impl Parser {
         self.deduplicate_labels();
         self.deduplicate_components();
     }
-    
+
     /// Merge duplicate classes into one
     fn deduplicate_classes(&mut self) {
         let mut canonicals = HashMap::new();
@@ -251,7 +251,8 @@ impl Parser {
                 hasher.write_u8(7);
                 hasher.write_usize(class.0)
             }
-            Instruction::Empty => hasher.write_u8(8),
+            Instruction::Sync => hasher.write_u8(8),
+            Instruction::Empty => hasher.write_u8(9),
         }
     }
 

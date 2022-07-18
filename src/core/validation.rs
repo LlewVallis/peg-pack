@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::core::character::Character;
-use crate::core::{ValidationError, InstructionId};
 use crate::core::{Instruction, Parser};
+use crate::core::{InstructionId, ValidationError};
 
 impl Parser {
     /// Finds errors in the grammar
@@ -55,7 +55,7 @@ impl Parser {
             | Instruction::Commit(target)
             | Instruction::Label(target, _)
             | Instruction::Delegate(target) => self.can_reach(base, target, visited, characters),
-            Instruction::Class(_) | Instruction::Empty => false,
+            Instruction::Class(_) | Instruction::Sync | Instruction::Empty => false,
         };
 
         visited.remove(&id);

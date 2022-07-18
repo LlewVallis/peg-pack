@@ -1,16 +1,16 @@
-use std::collections::{BTreeSet};
 use serde::Serialize;
+use std::collections::BTreeSet;
 
 use crate::store::{Store, StoreKey};
 
 mod character;
 mod fixed_point;
-mod graphvis;
-mod transformation;
-mod structure;
-mod validation;
-mod load;
 mod generation;
+mod graphvis;
+mod load;
+mod structure;
+mod transformation;
+mod validation;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Parser {
@@ -186,6 +186,7 @@ enum Instruction {
     Label(InstructionId, LabelId),
     Delegate(InstructionId),
     Class(ClassId),
+    Sync,
     Empty,
 }
 
@@ -200,7 +201,7 @@ impl Instruction {
             | Instruction::Commit(target)
             | Instruction::Label(target, _)
             | Instruction::Delegate(target) => (Some(target), None),
-            Instruction::Class(_) | Instruction::Empty => (None, None),
+            Instruction::Class(_) | Instruction::Sync | Instruction::Empty => (None, None),
         };
 
         first.into_iter().chain(second)
@@ -217,7 +218,7 @@ impl Instruction {
             Instruction::Commit(target) => Instruction::Commit(mapper(target)),
             Instruction::Label(target, label) => Instruction::Label(mapper(target), label),
             Instruction::Delegate(target) => Instruction::Delegate(mapper(target)),
-            Instruction::Class(_) | Instruction::Empty => *self,
+            Instruction::Class(_) | Instruction::Sync | Instruction::Empty => *self,
         }
     }
 }

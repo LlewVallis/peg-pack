@@ -1,5 +1,5 @@
-use std::collections::HashSet;
 use crate::core::{Instruction, Parser};
+use std::collections::HashSet;
 
 impl Parser {
     /// Remove all unreachable instructions, classes and labels

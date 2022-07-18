@@ -228,6 +228,10 @@ function noneOf(...ranges) {
     return createInstruction("class", { negated: true, ranges });
 }
 
+function sync() {
+    return createInstruction("sync");
+}
+
 function empty() {
     return createInstruction("empty");
 }
@@ -283,6 +287,7 @@ function prepareInterface(base) {
         result[key] = base[key].bind(result);
     }
 
+    anonymousRules.add(base.sync);
     anonymousRules.add(base.empty);
 
     interfaceBases.set(result, base);
@@ -300,6 +305,7 @@ globalThis.g = prepareInterface({
     label,
     oneOf,
     noneOf,
+    sync,
     empty,
     opt,
     repOne,

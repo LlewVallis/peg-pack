@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::core::{InstructionId, Parser};
+use std::collections::HashMap;
 
 impl Parser {
     /// Sort the instructions in the map by a depth first search. This is not actually necessary,

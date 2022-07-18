@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::core::{Instruction, InstructionId, Parser};
+use std::collections::HashMap;
 
 impl Parser {
     /// Elides all delegates in the graph

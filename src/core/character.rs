@@ -17,11 +17,12 @@ impl Parser {
             Instruction::Seq(first, second) => self.characterize_seq(first, second, states),
             Instruction::Choice(first, second) => self.characterize_choice(first, second, states),
             Instruction::NotAhead(target) => self.characterize_not_ahead(target, states),
-            Instruction::Error(target) |
-            Instruction::Commit(target) |
-            Instruction::Label(target, _) |
-            Instruction::Delegate(target) => self.characterize_delegate_like(target, states),
+            Instruction::Error(target)
+            | Instruction::Commit(target)
+            | Instruction::Label(target, _)
+            | Instruction::Delegate(target) => self.characterize_delegate_like(target, states),
             Instruction::Class(class) => self.characterize_class(class),
+            Instruction::Sync => self.characterize_sync(),
             Instruction::Empty => self.characterize_empty(),
         })
     }
@@ -97,6 +98,14 @@ impl Parser {
         Character {
             transparent: false,
             antitransparent: !empty,
+            fallible: true,
+        }
+    }
+
+    fn characterize_sync(&self) -> Character {
+        Character {
+            transparent: true,
+            antitransparent: false,
             fallible: true,
         }
     }

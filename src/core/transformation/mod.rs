@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
-use crate::core::Parser;
 use crate::core::InstructionId;
+use crate::core::Parser;
 
 mod deduplication;
-mod trim;
-mod sort;
 mod delegate_elimination;
+mod sort;
+mod trim;
 
 impl Parser {
     /// Transform and optimize the parser, cannot be run on an ill-formed grammar

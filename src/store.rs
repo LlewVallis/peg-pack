@@ -1,11 +1,11 @@
+use serde::ser::SerializeSeq;
+use serde::{Serialize, Serializer};
 use std::collections::BTreeMap;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
-use serde::{Serialize, Serializer};
-use serde::ser::SerializeSeq;
 
 pub trait StoreKey: Copy + Eq + Ord + Hash {
     fn from_usize(value: usize) -> Self;

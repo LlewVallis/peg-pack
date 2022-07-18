@@ -83,6 +83,12 @@ interface GrammarInterface {
   readonly noneOf: (...ranges: Range[]) => Rule;
 
   /**
+   * Matches the empty string if a synchronization rule is ahead, otherwise
+   * does not match.
+   */
+  readonly sync: () => Rule;
+
+  /**
    * Always matches the empty string.
    */
   readonly empty: () => Rule;

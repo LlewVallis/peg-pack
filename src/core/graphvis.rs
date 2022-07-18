@@ -42,7 +42,7 @@ impl Parser {
                 Instruction::Class(class) => {
                     result.push_str(&format!("    i{} -> c{};\n", id.0, class.0));
                 }
-                Instruction::Empty => {}
+                Instruction::Sync | Instruction::Empty => {}
             };
         }
 
@@ -59,6 +59,7 @@ impl Parser {
             Instruction::Delegate(_) => "Delegate",
             Instruction::Label(_, _) => "Label",
             Instruction::Class(_) => "Class",
+            Instruction::Sync => "Sync",
             Instruction::Empty => "Empty",
         };
 

@@ -103,6 +103,7 @@ impl Loader {
                 let class = self.parser.insert_class(class);
                 self.parser.insert(Instruction::Class(class))
             }
+            InstructionIr::Sync { .. } => self.parser.insert(Instruction::Sync),
             InstructionIr::Empty { .. } => self.parser.insert(Instruction::Empty),
         };
 
@@ -115,6 +116,7 @@ impl Loader {
             | InstructionIr::Label { rule_name, .. }
             | InstructionIr::Delegate { rule_name, .. }
             | InstructionIr::Class { rule_name, .. }
+            | InstructionIr::Sync { rule_name, .. }
             | InstructionIr::Empty { rule_name } => {
                 let name = rule_name.unwrap_or_else(|| String::from("<anonymous>"));
                 self.rule_names.insert(id, name);
@@ -165,11 +167,20 @@ enum InstructionIr {
         rule_name: Option<String>,
     },
     #[serde(rename_all = "camelCase")]
-    NotAhead { target: usize, rule_name: Option<String> },
+    NotAhead {
+        target: usize,
+        rule_name: Option<String>,
+    },
     #[serde(rename_all = "camelCase")]
-    Error { target: usize, rule_name: Option<String> },
+    Error {
+        target: usize,
+        rule_name: Option<String>,
+    },
     #[serde(rename_all = "camelCase")]
-    Commit { target: usize, rule_name: Option<String> },
+    Commit {
+        target: usize,
+        rule_name: Option<String>,
+    },
     #[serde(rename_all = "camelCase")]
     Label {
         target: usize,
@@ -177,13 +188,18 @@ enum InstructionIr {
         rule_name: Option<String>,
     },
     #[serde(rename_all = "camelCase")]
-    Delegate { target: usize, rule_name: Option<String> },
+    Delegate {
+        target: usize,
+        rule_name: Option<String>,
+    },
     #[serde(rename_all = "camelCase")]
     Class {
         negated: bool,
         ranges: Vec<(u8, u8)>,
         rule_name: Option<String>,
     },
+    #[serde(rename_all = "camelCase")]
+    Sync { rule_name: Option<String> },
     #[serde(rename_all = "camelCase")]
     Empty { rule_name: Option<String> },
 }

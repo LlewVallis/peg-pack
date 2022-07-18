@@ -1,8 +1,8 @@
 extern crate core;
 
-use std::fs;
-use serde_json::Value;
 use peg_pack::core::Parser;
+use serde_json::Value;
+use std::fs;
 
 macro_rules! case {
     ($name:ident) => {
@@ -49,10 +49,17 @@ fn test(input: &[u8], expected: &[u8]) {
     let expected = serde_json::from_slice::<Value>(expected).unwrap();
 
     if actual != expected {
-        let actual = serde_json::to_string_pretty(&actual).unwrap().replace("\n", "\n    ");
-        let expected = serde_json::to_string_pretty(&expected).unwrap().replace("\n", "\n    ");
+        let actual = serde_json::to_string_pretty(&actual)
+            .unwrap()
+            .replace("\n", "\n    ");
+        let expected = serde_json::to_string_pretty(&expected)
+            .unwrap()
+            .replace("\n", "\n    ");
 
-        panic!("test case failed:\n    actual: {}\n  expected: {}", actual, expected);
+        panic!(
+            "test case failed:\n    actual: {}\n  expected: {}",
+            actual, expected
+        );
     }
 }
 
