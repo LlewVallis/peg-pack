@@ -1,5 +1,5 @@
 use serde::Serialize;
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet};
 
 use crate::store::{Store, StoreKey};
 
@@ -114,12 +114,12 @@ impl Parser {
         &self.labels[id]
     }
 
-    fn relabel(&mut self, mapper: impl Fn(InstructionId) -> InstructionId) {
+    fn relabel(&mut self, mut mapper: impl FnMut(InstructionId) -> InstructionId) {
         let mut new_instructions = Store::new();
 
         for (id, instruction) in self.instructions() {
             let new_id = mapper(id);
-            let new_instruction = instruction.remapped(&mapper);
+            let new_instruction = instruction.remapped(&mut mapper);
             new_instructions.set(new_id, new_instruction);
         }
 
@@ -127,9 +127,9 @@ impl Parser {
         self.start = mapper(self.start);
     }
 
-    fn remap(&mut self, mapper: impl Fn(InstructionId) -> InstructionId) {
+    fn remap(&mut self, mut mapper: impl FnMut(InstructionId) -> InstructionId) {
         for (_, instruction) in self.instructions.iter_mut() {
-            *instruction = instruction.remapped(&mapper);
+            *instruction = instruction.remapped(&mut mapper);
         }
 
         self.start = mapper(self.start);
@@ -207,7 +207,7 @@ impl Instruction {
         first.into_iter().chain(second)
     }
 
-    fn remapped(&self, mapper: impl Fn(InstructionId) -> InstructionId) -> Self {
+    fn remapped(&self, mut mapper: impl FnMut(InstructionId) -> InstructionId) -> Self {
         match *self {
             Instruction::Seq(first, second) => Instruction::Seq(mapper(first), mapper(second)),
             Instruction::Choice(first, second) => {

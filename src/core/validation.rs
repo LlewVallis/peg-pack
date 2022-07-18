@@ -34,7 +34,7 @@ impl Parser {
         }
 
         if !visited.insert(id) {
-            return id == base;
+            return false;
         }
 
         let result = match self.instructions[id] {

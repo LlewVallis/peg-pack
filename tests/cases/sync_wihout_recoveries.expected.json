@@ -1,0 +1,13 @@
+{
+  "start": 0,
+  "instructions": [
+    { "class": 0 }
+  ],
+  "classes": [
+    {
+      "negated": true,
+      "ranges": []
+    }
+  ],
+  "labels": []
+}

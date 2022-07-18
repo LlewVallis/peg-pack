@@ -1,0 +1,16 @@
+{
+  "start": 0,
+  "instructions": [
+    { "seq": [1, 3] },
+    { "notAhead": 2 },
+    { "notAhead": 3 },
+    { "class": 0 }
+  ],
+  "classes": [
+    {
+      "negated": true,
+      "ranges": []
+    }
+  ],
+  "labels": []
+}

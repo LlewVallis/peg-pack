@@ -5,8 +5,10 @@ use crate::core::Parser;
 
 mod deduplication;
 mod delegate_elimination;
+mod linearization;
 mod sort;
 mod trim;
+mod sync_elimination;
 
 impl Parser {
     /// Transform and optimize the parser, cannot be run on an ill-formed grammar
@@ -14,6 +16,9 @@ impl Parser {
         self.trim();
         self.sort();
         self.remove_delegates();
+        self.deduplicate();
+        self.linearize();
+        self.resolve_syncs();
         self.deduplicate();
         self.sort();
     }

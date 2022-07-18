@@ -9,6 +9,7 @@ impl Parser {
         self.deduplicate_classes();
         self.deduplicate_labels();
         self.deduplicate_components();
+        self.trim();
     }
 
     /// Merge duplicate classes into one
@@ -32,10 +33,6 @@ impl Parser {
                 *id = mappings[id];
             }
         }
-
-        for removal in removals {
-            self.classes.remove(removal);
-        }
     }
 
     /// Merge duplicate labels into one
@@ -58,10 +55,6 @@ impl Parser {
             if let Instruction::Label(_, id) = instruction {
                 *id = mappings[id];
             }
-        }
-
-        for removal in removals {
-            self.labels.remove(removal);
         }
     }
 
@@ -89,7 +82,6 @@ impl Parser {
         );
 
         self.remap(|id| Self::follow_mappings(id, &mappings));
-        self.trim();
     }
 
     /// Performs a depth first search of all components, remapping if a
