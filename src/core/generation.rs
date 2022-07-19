@@ -241,15 +241,37 @@ impl Parser {
         let signature = format!("fn class_{}(char: u8) -> bool", id);
         let mut function = codegen.function(&signature);
 
-        for range in class.ranges() {
-            function.line("#[allow(unused_comparisons)]");
-            let control = format!("{} <= char && char <= {}", range.0, range.1);
-            let mut branch = function.if_statement(&control);
-
-            branch.line(&format!("return {};", !class.negated()));
-        }
+        let ranges = class.ranges().collect::<Vec<_>>();
+        self.generate_class_ranges(&mut function, &ranges, class.negated());
 
         function.line(&format!("{}", class.negated()));
+    }
+
+    fn generate_class_ranges(&self, block: &mut Statements, ranges: &[(u8, u8)], negated: bool) {
+        if ranges.len() <= 3 {
+            for range in ranges {
+                block.line("#[allow(unused_comparisons)]");
+                let control = format!("{} <= char && char <= {}", range.0, range.1);
+                let mut branch = block.if_statement(&control);
+
+                branch.line(&format!("return {};", !negated));
+            }
+        } else {
+            let midpoint = ranges.len() / 2;
+            let threshold = ranges[midpoint].0;
+
+            {
+                block.line("#[allow(unused_comparisons)]");
+                let mut below = block.if_statement(&format!("char < {}", threshold));
+                self.generate_class_ranges(&mut below, &ranges[..midpoint], negated);
+            }
+
+            {
+                block.line("#[allow(unused_comparisons)]");
+                let mut above = block.if_statement(&format!("char >= {}", threshold));
+                self.generate_class_ranges(&mut above, &ranges[midpoint..], negated);
+            }
+        }
     }
 
     fn generate_dispatch_function(&self, codegen: &mut Codegen) {
