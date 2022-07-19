@@ -164,8 +164,18 @@ function normalizeRanges(ranges) {
     return ranges.map(normalizeRange);
 }
 
+function reduceArrays(values, f) {
+    return values.map(value => {
+        if (value instanceof Array) {
+            return f(...value);
+        } else {
+            return value;
+        }
+    })
+}
+
 function seq(...rules) {
-    const instructions = rules.map(resolveInstruction);
+    const instructions = reduceArrays(rules, seq).map(resolveInstruction);
 
     let result = createInstruction("empty");
 
@@ -175,6 +185,18 @@ function seq(...rules) {
     }
 
     return result;
+}
+
+function then(...rules) {
+    const transformedRules = rules.map((rule, i) => {
+        if (i === 0) {
+            return rule;
+        } else {
+            return this.recover(rule);
+        }
+    });
+
+    return this.seq(...transformedRules);
 }
 
 function choice(...rules) {
@@ -191,12 +213,10 @@ function choice(...rules) {
 }
 
 function strictChoice(...rules) {
-    const instructions = rules.map(resolveInstruction);
-
     let result = createInstruction("class", { negated: false, ranges: [] });
 
-    for (const instruction of instructions) {
-        const strictInstruction = g.seq(g.notAhead(result), instruction);
+    for (const rule of rules) {
+        const strictInstruction = resolveInstruction(g.seq(g.notAhead(result), rule));
         const resultInstruction = resolveInstruction(result);
         result = createInstruction("choice", { first: resultInstruction, second: strictInstruction });
     }
@@ -204,12 +224,25 @@ function strictChoice(...rules) {
     return result;
 }
 
+function recover(rule) {
+    const result = () => this.strictChoice(
+        rule,
+        g.seq(this.sync, this.error(this.empty)),
+        this.seq(this.error(this.any), result),
+    );
+
+    anonymousRules.add(result);
+
+    const instruction = resolveInstruction(result);
+    return createInstruction("delegate", { target: instruction });
+}
+
 function notAhead(...rules) {
     const instruction = resolveInstruction(this.choice(...rules));
     return createInstruction("notAhead", { target: instruction });
 }
 
-function asError(rule) {
+function error(rule) {
     const instruction = resolveInstruction(rule);
     return createInstruction("error", { target: instruction });
 }
@@ -313,10 +346,12 @@ function prepareInterface(base) {
 
 globalThis.g = prepareInterface({
     seq,
+    then,
     choice,
     strictChoice,
+    recover,
     notAhead,
-    asError,
+    error,
     label,
     oneOf,
     noneOf,

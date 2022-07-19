@@ -17,6 +17,12 @@ declare class Rule {
 type RuleLike = Rule | (() => RuleLike) | string;
 
 /**
+ * A potentially nested array of rules. Nesting within each array indicates a
+ * recursive invocation of the operator with the arguments in the array.
+ */
+type NestedRuleLikes = (RuleLike | NestedRuleLikes)[];
+
+/**
  * A continuous range of characters, or a string character, that can be
  * matched as one element.
  */
@@ -35,8 +41,26 @@ interface GrammarInterface {
   /**
    * Matches if and only if all rules match in sequence. Matches the empty
    * string if no rules are provided.
+   *
+   * When taking sync instructions into account, the seq operator is not
+   * associative. When more than two arguments are provided, the then operator
+   * is equivalent to a left-associative chain with two arguments in each
+   * invocation.
    */
-  readonly seq: (...rules: RuleLike[]) => Rule;
+  readonly seq: (...rules: NestedRuleLikes) => Rule;
+
+  /**
+   * Matches the first rule, then attempts to match subsequent rules whilst
+   * recovering from errors.
+   *
+   * Equivalent to `seq(first, recover(second), recover(third))`.
+   *
+   * When taking sync instructions into account, the then operator is not
+   * associative. When more than two arguments are provided, the then operator
+   * is equivalent to a left-associative chain with two arguments in each
+   * invocation.
+   */
+  readonly then: (...rules: NestedRuleLikes) => Rule;
 
   /**
    * Matches the rule with the furthest error with preference in the order they
@@ -64,7 +88,7 @@ interface GrammarInterface {
   /**
    * Matches the provided rule, transforming it into an error if it does match.
    */
-  readonly asError: (rule: RuleLike) => Rule;
+  readonly error: (rule: RuleLike) => Rule;
 
   /**
    * Matches the provided rule, wrapping it in a label if it does match.

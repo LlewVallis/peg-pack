@@ -45,8 +45,13 @@ impl Parser {
 
         self.instructions[new_id] = new_instruction;
 
-        mappings.remove(&id);
-        ancestors.remove(&id);
+        if new_id != id {
+            assert!(mappings.remove(&id).is_some());
+            assert!(ancestors.remove(&new_id));
+        }
+
+        assert!(ancestors.remove(&id));
+
         new_id
     }
 }
