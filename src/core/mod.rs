@@ -185,7 +185,6 @@ enum Instruction {
     Label(InstructionId, LabelId),
     Delegate(InstructionId),
     Class(ClassId),
-    Sync,
     Empty,
 }
 
@@ -199,7 +198,7 @@ impl Instruction {
             | Instruction::Error(target)
             | Instruction::Label(target, _)
             | Instruction::Delegate(target) => (Some(target), None),
-            Instruction::Class(_) | Instruction::Sync | Instruction::Empty => (None, None),
+            Instruction::Class(_) | Instruction::Empty => (None, None),
         };
 
         first.into_iter().chain(second)
@@ -215,7 +214,7 @@ impl Instruction {
             Instruction::Error(target) => Instruction::Error(mapper(target)),
             Instruction::Label(target, label) => Instruction::Label(mapper(target), label),
             Instruction::Delegate(target) => Instruction::Delegate(mapper(target)),
-            Instruction::Class(_) | Instruction::Sync | Instruction::Empty => *self,
+            Instruction::Class(_) | Instruction::Empty => *self,
         }
     }
 }

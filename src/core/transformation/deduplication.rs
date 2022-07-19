@@ -242,7 +242,6 @@ impl Parser {
                 hasher.write_u8(7);
                 hasher.write_usize(class.0)
             }
-            Instruction::Sync => hasher.write_u8(8),
             Instruction::Empty => hasher.write_u8(9),
         }
     }

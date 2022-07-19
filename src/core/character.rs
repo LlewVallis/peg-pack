@@ -21,7 +21,6 @@ impl Parser {
             | Instruction::Label(target, _)
             | Instruction::Delegate(target) => self.characterize_delegate_like(target, states),
             Instruction::Class(class) => self.characterize_class(class),
-            Instruction::Sync => self.characterize_sync(),
             Instruction::Empty => self.characterize_empty(),
         })
     }
@@ -97,14 +96,6 @@ impl Parser {
         Character {
             transparent: false,
             antitransparent: !empty,
-            fallible: true,
-        }
-    }
-
-    fn characterize_sync(&self) -> Character {
-        Character {
-            transparent: true,
-            antitransparent: false,
             fallible: true,
         }
     }

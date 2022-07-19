@@ -17,12 +17,6 @@ declare class Rule {
 type RuleLike = Rule | (() => RuleLike) | string;
 
 /**
- * A potentially nested array of rules. Nesting within each array indicates a
- * recursive invocation of the operator with the arguments in the array.
- */
-type NestedRuleLikes = (RuleLike | NestedRuleLikes)[];
-
-/**
  * A continuous range of characters, or a string character, that can be
  * matched as one element.
  */
@@ -41,26 +35,17 @@ interface GrammarInterface {
   /**
    * Matches if and only if all rules match in sequence. Matches the empty
    * string if no rules are provided.
-   *
-   * When taking sync instructions into account, the seq operator is not
-   * associative. When more than two arguments are provided, the then operator
-   * is equivalent to a left-associative chain with two arguments in each
-   * invocation.
    */
-  readonly seq: (...rules: NestedRuleLikes) => Rule;
+  readonly seq: (...rules: RuleLike[]) => Rule;
 
   /**
    * Matches the first rule, then attempts to match subsequent rules whilst
-   * recovering from errors.
+   * recovering from errors using the synchronization rules provided in the
+   * first argument list.
    *
-   * Equivalent to `seq(first, recover(second), recover(third))`.
-   *
-   * When taking sync instructions into account, the then operator is not
-   * associative. When more than two arguments are provided, the then operator
-   * is equivalent to a left-associative chain with two arguments in each
-   * invocation.
+   * Equivalent to `seq(first, recover(...syncs)(second))`.
    */
-  readonly then: (...rules: NestedRuleLikes) => Rule;
+  readonly then: (...syncs: RuleLike[]) => (...rules: RuleLike[]) => Rule;
 
   /**
    * Matches the rule with the furthest error with preference in the order they
@@ -78,6 +63,33 @@ interface GrammarInterface {
    * Equivalent to `choice(first, seq(notAhead(first), second))`.
    */
   readonly strictChoice: (...rules: RuleLike[]) => Rule;
+
+  /**
+   * Attempts to match the provided rule, recovering if the match failed. The
+   * recovery process discards tokens until the target rule matches, one of the
+   * synchronization rules is ahead, or the end of input has been reached.
+   *
+   * This rule will always match.
+   *
+   * Equivalent to:
+   * ```
+   * result = strictChoice(
+   *   rule,
+   *   seq(ahead(...syncs, eof), error(empty)),
+   *   seq(error(any), result)
+   * );
+   * result
+   * ```
+   */
+  readonly recover: (...syncs: RuleLike[]) => (rule: RuleLike) => Rule;
+
+  /**
+   * Matches the empty string if any of the provided rules would match,
+   * otherwise does not match. Never matches if no rules are provided.
+   *
+   * Equivalent to `notAhead(notAhead(...rules))`.
+   */
+  readonly ahead: (...rules: RuleLike[]) => Rule;
 
   /**
    * Matches the empty string if none of the provided rules would match,
@@ -109,12 +121,6 @@ interface GrammarInterface {
   readonly noneOf: (...ranges: Range[]) => Rule;
 
   /**
-   * Matches the empty string if a synchronization rule is ahead, otherwise
-   * does not match.
-   */
-  readonly sync: () => Rule;
-
-  /**
    * Always matches the empty string.
    */
   readonly empty: () => Rule;
@@ -132,7 +138,11 @@ interface GrammarInterface {
    * entire repetition will match, otherwise it will not. If a separator is
    * provided it will be matched before each additional match of the base rule.
    *
-   * Equivalent to `more = opt(seq(separator, rule, more)); seq(rule, more)`.
+   * Equivalent to:
+   * ```
+   * more = opt(seq(separator, rule, more));
+   * seq(rule, more)
+   * ```.
    */
   readonly repOne: (rule: RuleLike, separator?: RuleLike) => Rule;
 
@@ -144,6 +154,56 @@ interface GrammarInterface {
    * Equivalent to `opt(repOne(rule, separator))`.
    */
   readonly rep: (rule: RuleLike, separator?: RuleLike) => Rule;
+
+  /**
+   * Attempts to match the provided rule until one of the synchronization
+   * tokens is reached. Although this rule always matches, the result will
+   * contain an error if the rule does not match at least once. After the first
+   * match of the provided rule, preference is given to terminating when
+   * synchronization tokens are encountered.
+   *
+   * Equivalent to:
+   * ```
+   * more = choice(
+   *   ahead(...syncs, eof),
+   *   seq(
+   *     recover(...syncs, rule)(separator),
+   *     recover(...syncs)(seq(
+   *       rule,
+   *       more
+   *     ))
+   *   )
+   * );
+   * recover(...syncs)(seq(rule, more))
+   * ```
+   */
+  readonly untilOne: (...syncs: RuleLike[]) => (rule: RuleLike, separator?: RuleLike) => Rule;
+
+  /**
+   * Attempts to match the provided rule until one of the synchronization
+   * tokens is reached. This rule always matches. Preference is always given to
+   * terminating when a synchronization token is encountered, and no error will
+   * be present if the provided rule was never matched.
+   *
+   * Equivalent to:
+   * ```
+   * more = choice(
+   *   ahead(...syncs, eof),
+   *   seq(
+   *     recover(...syncs, rule)(separator),
+   *     recover(...syncs)(seq(
+   *       rule,
+   *       more
+   *     ))
+   *   )
+   * );
+   * recover(...syncs)(choice(
+   *   ahead(...syncs, eof),
+   *   seq(rule, more)
+   * ))
+   * ```
+   */
+  readonly until: (...syncs: RuleLike[]) => (rule: RuleLike, separator?: RuleLike) => Rule;
 
   /**
    * Matches any single character.
@@ -160,11 +220,11 @@ interface GrammarInterface {
   readonly eof: () => Rule;
 
   /**
-   * Constructs a variant of this parser interface whose operators match any
+   * Constructs a variant of this grammar interface whose operators match any
    * number of occurrences of the provided rule between matches of rule
-   * operands. This affects the `seq`, `repOne` and `rep` operators but does
-   * not affect string literal rules. Rules created with the new interface do
-   * not match the whitespace rule before or after the input they match.
+   * operands. This does not affect string literal rules. Rules created with
+   * the new interface do not match the whitespace rule before or after the
+   * input they match.
    */
   readonly whitespace: (rule: RuleLike) => GrammarInterface;
 }

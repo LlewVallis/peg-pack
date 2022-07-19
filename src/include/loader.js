@@ -164,18 +164,8 @@ function normalizeRanges(ranges) {
     return ranges.map(normalizeRange);
 }
 
-function reduceArrays(values, f) {
-    return values.map(value => {
-        if (value instanceof Array) {
-            return f(...value);
-        } else {
-            return value;
-        }
-    })
-}
-
 function seq(...rules) {
-    const instructions = reduceArrays(rules, seq).map(resolveInstruction);
+    const instructions = rules.map(resolveInstruction);
 
     let result = createInstruction("empty");
 
@@ -187,16 +177,22 @@ function seq(...rules) {
     return result;
 }
 
-function then(...rules) {
-    const transformedRules = rules.map((rule, i) => {
-        if (i === 0) {
-            return rule;
-        } else {
-            return this.recover(rule);
-        }
-    });
+function then(...syncs) {
+    const f = (...rules) => {
+        const transformedRules = rules.map((rule, i) => {
+            if (i === 0) {
+                return rule;
+            } else {
+                return this.recover(...syncs)(rule);
+            }
+        });
 
-    return this.seq(...transformedRules);
+        return this.seq(...transformedRules);
+    };
+
+    anonymousRules.add(f);
+
+    return f;
 }
 
 function choice(...rules) {
@@ -224,17 +220,29 @@ function strictChoice(...rules) {
     return result;
 }
 
-function recover(rule) {
-    const result = () => this.strictChoice(
-        rule,
-        g.seq(this.sync, this.error(this.empty)),
-        this.seq(this.error(this.any), result),
-    );
+function recover(...syncs) {
+    const f = (rule) => {
+        const sync = this.ahead(...syncs, this.eof);
 
-    anonymousRules.add(result);
+        const result = () => this.strictChoice(
+            rule,
+            g.seq(sync, this.error(this.empty)),
+            this.seq(this.error(this.any), result),
+        );
 
-    const instruction = resolveInstruction(result);
-    return createInstruction("delegate", { target: instruction });
+        anonymousRules.add(result);
+
+        const instruction = resolveInstruction(result);
+        return createInstruction("delegate", { target: instruction });
+    };
+
+    anonymousRules.add(f);
+
+    return f;
+}
+
+function ahead(...rules) {
+    return this.notAhead(this.notAhead(...rules));
 }
 
 function notAhead(...rules) {
@@ -270,10 +278,6 @@ function noneOf(...ranges) {
     return createInstruction("class", { negated: true, ranges });
 }
 
-function sync() {
-    return createInstruction("sync");
-}
-
 function empty() {
     return createInstruction("empty");
 }
@@ -294,6 +298,47 @@ function repOne(rule, separator = this.empty) {
 
 function rep(rule, separator = this.empty) {
     return this.opt(this.repOne(rule, separator));
+}
+
+function untilOne(...syncs) {
+    return (rule, separator = this.empty) => {
+        const more = () => this.choice(
+            this.ahead(...syncs, this.eof),
+            this.seq(
+                this.recover(...syncs, rule)(separator),
+                this.recover(...syncs)(this.seq(
+                    rule,
+                    more
+                )),
+            ),
+        );
+
+        anonymousRules.add(more);
+
+        return this.recover(...syncs)(this.seq(rule, more));
+    };
+}
+
+function until(...syncs) {
+    return (rule, separator = this.empty) => {
+        const more = () => this.choice(
+            this.ahead(...syncs, this.eof),
+            this.seq(
+                this.recover(...syncs, rule)(separator),
+                this.recover(...syncs)(this.seq(
+                    rule,
+                    more
+                )),
+            ),
+        );
+
+        anonymousRules.add(more);
+
+        return this.recover(...syncs)(this.choice(
+            this.ahead(...syncs, this.eof),
+            this.seq(rule, more)
+        ));
+    };
 }
 
 function any() {
@@ -350,16 +395,18 @@ globalThis.g = prepareInterface({
     choice,
     strictChoice,
     recover,
+    ahead,
     notAhead,
     error,
     label,
     oneOf,
     noneOf,
-    sync,
     empty,
     opt,
     repOne,
     rep,
+    untilOne,
+    until,
     any,
     eof,
     whitespace,

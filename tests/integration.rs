@@ -39,11 +39,6 @@ cases!(
     deduplicate_components,
     deduplicate_rotated_components,
     deduplicate_component_instructions,
-    sync_wihout_recoveries,
-    sync_one_recovery,
-    sync_two_recoveries,
-    sync_linearized_recovery,
-    sync_left_recursive,
 );
 
 fn test(input: &[u8], expected: &[u8]) {

@@ -99,7 +99,6 @@ impl Loader {
                 let class = self.parser.insert_class(class);
                 self.parser.insert(Instruction::Class(class))
             }
-            InstructionIr::Sync { .. } => self.parser.insert(Instruction::Sync),
             InstructionIr::Empty { .. } => self.parser.insert(Instruction::Empty),
         };
 
@@ -111,7 +110,6 @@ impl Loader {
             | InstructionIr::Label { rule_name, .. }
             | InstructionIr::Delegate { rule_name, .. }
             | InstructionIr::Class { rule_name, .. }
-            | InstructionIr::Sync { rule_name, .. }
             | InstructionIr::Empty { rule_name } => {
                 let name = rule_name.unwrap_or_else(|| String::from("<anonymous>"));
                 self.rule_names.insert(id, name);
@@ -188,8 +186,6 @@ enum InstructionIr {
         ranges: Vec<(u8, u8)>,
         rule_name: Option<String>,
     },
-    #[serde(rename_all = "camelCase")]
-    Sync { rule_name: Option<String> },
     #[serde(rename_all = "camelCase")]
     Empty { rule_name: Option<String> },
 }

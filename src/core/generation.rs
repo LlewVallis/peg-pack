@@ -204,7 +204,6 @@ impl Parser {
                 assert_eq!(state.stage, 0);
                 function.line("ctx.state_empty();");
             }
-            Instruction::Sync => unreachable!(),
         }
     }
 
@@ -285,7 +284,6 @@ impl Parser {
                 Instruction::Delegate(_) => 1,
                 Instruction::Class(_) => 1,
                 Instruction::Empty => 1,
-                Instruction::Sync => unreachable!(),
             };
 
             for stage in 0..stages {
