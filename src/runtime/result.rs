@@ -1,4 +1,6 @@
 use super::Grammar;
+use std::fmt::Debug;
+use std::hash::Hash;
 use std::hint::unreachable_unchecked;
 use std::iter::FusedIterator;
 
@@ -61,22 +63,28 @@ impl<G: Grammar> ParseResult<G> {
         }
     }
 
-    pub fn mark_error(mut self) -> Self {
-        match &mut self {
+    pub fn mark_error(self) -> Self {
+        match self {
             ParseResult::Matched(value) => {
-                value.error_distance = Some(0);
-            }
-            ParseResult::Unmatched { .. } => {}
-        }
+                let new_value = Match {
+                    label: Label::Error,
+                    scan_distance: value.scan_distance,
+                    distance: value.distance,
+                    error_distance: Some(0),
+                    children: vec![value],
+                };
 
-        self
+                ParseResult::Matched(new_value)
+            }
+            ParseResult::Unmatched { .. } => self,
+        }
     }
 
     pub fn label(self, label: G::Label) -> Self {
         match self {
             ParseResult::Matched(value) => {
                 let new_value = Match {
-                    label: Some(label),
+                    label: Label::Custom(label),
                     scan_distance: value.scan_distance,
                     distance: value.distance,
                     error_distance: value.error_distance,
@@ -91,7 +99,7 @@ impl<G: Grammar> ParseResult<G> {
 }
 
 pub struct Match<G: Grammar> {
-    label: Option<G::Label>,
+    label: Label<G::Label>,
     scan_distance: usize,
     distance: usize,
     error_distance: Option<usize>,
@@ -107,7 +115,7 @@ impl<G: Grammar> Match<G> {
         Self {
             scan_distance,
             distance,
-            label: None,
+            label: Label::None,
             error_distance: None,
             children: Vec::new(),
         }
@@ -125,7 +133,7 @@ impl<G: Grammar> Match<G> {
         });
 
         Self {
-            label: None,
+            label: Label::None,
             scan_distance,
             distance,
             error_distance,
@@ -138,7 +146,7 @@ impl<G: Grammar> Match<G> {
         self
     }
 
-    pub fn label(&self) -> Option<G::Label> {
+    pub fn label(&self) -> Label<G::Label> {
         self.label
     }
 
@@ -164,13 +172,16 @@ impl<G: Grammar> Match<G> {
             parents: vec![(self, 0)],
         }
     }
-
-    pub fn walk_labelled(&self) -> impl Iterator<Item = (&Self, EnterExit)> {
-        self.walk().filter(|(node, _)| node.label().is_some())
-    }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub enum Label<T: Debug + Copy + Eq + Hash> {
+    None,
+    Error,
+    Custom(T),
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum EnterExit {
     Enter,
     Exit,

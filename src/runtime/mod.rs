@@ -13,15 +13,20 @@ pub use input::*;
 pub use result::{Match, ParseResult};
 
 use buffered_iter::BufferedIter;
-use result::EnterExit;
+use result::{EnterExit, Label};
 use std::fmt::{self, Debug, Formatter};
 
 pub struct GenParseMatch<G: Grammar>(pub Match<G>);
 
 impl<G: Grammar> GenParseMatch<G> {
     fn write_node(&self, f: &mut Formatter, node: &Match<G>) -> fmt::Result {
-        let label = unsafe { node.label().unwrap_unchecked() };
-        write!(f, "{:?}", label)
+        match node.label() {
+            Label::Custom(label) => write!(f, "{:?}", label)?,
+            Label::Error => write!(f, "Error")?,
+            Label::None => {},
+        }
+
+        write!(f, "[{}]", node.distance())
     }
 
     fn next_is_enter<'b>(
@@ -69,9 +74,14 @@ impl<G: Grammar> GenParseMatch<G> {
         Ok(())
     }
 
-    fn fmt_normal(&self, f: &mut Formatter) -> fmt::Result {
-        let mut iter = BufferedIter::new(self.0.walk_labelled());
-
+    fn fmt_normal<'b>(
+        &self,
+        f: &mut Formatter,
+        iter: &mut BufferedIter<impl Iterator<Item = (&'b Match<G>, EnterExit)>>,
+    ) -> fmt::Result
+    where
+        G: 'b,
+    {
         if iter.peek().is_none() {
             return write!(f, "Match");
         }
@@ -81,16 +91,16 @@ impl<G: Grammar> GenParseMatch<G> {
                 EnterExit::Enter => {
                     self.write_node(f, node)?;
 
-                    if self.next_is_enter(&mut iter) {
+                    if self.next_is_enter(iter) {
                         write!(f, "(")?;
                     } else {
                         iter.next();
-                        self.delimit_normal(f, &mut iter)?;
+                        self.delimit_normal(f, iter)?;
                     }
                 }
                 EnterExit::Exit => {
                     write!(f, ")")?;
-                    self.delimit_normal(f, &mut iter)?;
+                    self.delimit_normal(f, iter)?;
                 }
             }
         }
@@ -98,8 +108,14 @@ impl<G: Grammar> GenParseMatch<G> {
         Ok(())
     }
 
-    fn fmt_pretty(&self, f: &mut Formatter) -> fmt::Result {
-        let mut iter = BufferedIter::new(self.0.walk_labelled());
+    fn fmt_pretty<'b>(
+        &self,
+        f: &mut Formatter,
+        iter: &mut BufferedIter<impl Iterator<Item = (&'b Match<G>, EnterExit)>>,
+    ) -> fmt::Result
+    where
+        G: 'b,
+    {
         let mut indent = 0;
 
         if iter.peek().is_none() {
@@ -115,7 +131,7 @@ impl<G: Grammar> GenParseMatch<G> {
 
                     self.write_node(f, node)?;
 
-                    if self.next_is_enter(&mut iter) {
+                    if self.next_is_enter(iter) {
                         write!(f, "(")?;
                         indent += 1;
                     } else {
@@ -138,10 +154,17 @@ impl<G: Grammar> GenParseMatch<G> {
 
 impl<G: Grammar> Debug for GenParseMatch<G> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let iter = self
+            .0
+            .walk()
+            .filter(|(node, _)| node.label() != Label::None);
+
+        let mut iter = BufferedIter::new(iter);
+
         if f.alternate() {
-            self.fmt_pretty(f)
+            self.fmt_pretty(f, &mut iter)
         } else {
-            self.fmt_normal(f)
+            self.fmt_normal(f, &mut iter)
         }
     }
 }
