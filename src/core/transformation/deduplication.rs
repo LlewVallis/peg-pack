@@ -3,8 +3,8 @@ use std::hash::Hasher;
 
 use seahash::SeaHasher;
 
-use crate::core::{Instruction, InstructionId, Parser};
 use crate::core::structure::{Component, ComponentId, Components};
+use crate::core::{Instruction, InstructionId, Parser};
 
 impl Parser {
     pub(super) fn deduplicate(&mut self) {

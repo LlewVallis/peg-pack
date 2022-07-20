@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
 use regex::Regex;
-use serde::{Deserialize, Deserializer};
 use serde::de::Error;
+use serde::{Deserialize, Deserializer};
 
-use crate::core::{Instruction, InstructionId, Parser};
 use crate::core::series::{Class, Series};
+use crate::core::{Instruction, InstructionId, Parser};
 
 /// Required IR file version
 const VERSION: u32 = 0;

@@ -28,6 +28,16 @@ impl Series {
         }
     }
 
+    pub fn merge(first: &Series, second: &Series) -> Series {
+        let mut result = Self::empty();
+
+        for class in first.classes.iter().chain(second.classes.iter()) {
+            result.append(class.clone());
+        }
+
+        result
+    }
+
     pub fn is_empty(&self) -> bool {
         self.classes.is_empty()
     }
@@ -50,7 +60,7 @@ impl Series {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Hash, Serialize)]
+#[derive(Debug, Eq, PartialEq, Hash, Serialize, Clone)]
 pub struct Class {
     negated: bool,
     ranges: Vec<(u8, u8)>,

@@ -5,8 +5,8 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 
-use serde::{Serialize, Serializer};
 use serde::ser::SerializeSeq;
+use serde::{Serialize, Serializer};
 
 pub trait StoreKey: Copy + Eq + Ord + Hash {
     fn from_usize(value: usize) -> Self;
@@ -50,8 +50,8 @@ impl<K: StoreKey, V> Store<K, V> {
         self.map.insert(id, value);
     }
 
-    pub fn remove(&mut self, id: K) {
-        self.map.remove(&id.into_usize());
+    pub fn remove(&mut self, id: K) -> Option<V> {
+        self.map.remove(&id.into_usize())
     }
 
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = (K, &V)> {

@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 use std::mem;
 
-use crate::core::{Instruction, InstructionId, Parser};
 use crate::core::series::{Class, Series};
+use crate::core::{Instruction, InstructionId, Parser};
 use crate::output::{Codegen, Statements};
 
 #[derive(Copy, Clone)]

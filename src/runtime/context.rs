@@ -1,11 +1,11 @@
 use std::mem;
 use std::mem::MaybeUninit;
 
-use super::{FINISH_STATE, State};
 use super::grammar::Grammar;
 use super::input::Input;
 use super::result::Match;
 use super::result::ParseResult;
+use super::{State, FINISH_STATE};
 
 pub struct Context<'a, I: Input + ?Sized, G: Grammar> {
     input: &'a I,

@@ -7,8 +7,8 @@ use buffered_iter::BufferedIter;
 pub use context::Context;
 pub use grammar::Grammar;
 pub use input::*;
-pub use result::{Match, ParseResult};
 use result::{EnterExit, Label};
+pub use result::{Match, ParseResult};
 
 mod buffered_iter;
 mod context;

@@ -1,10 +1,10 @@
-use std::{fs, io, panic};
 use std::fs::File;
 use std::io::{ErrorKind, Write};
 use std::panic::PanicInfo;
 use std::path::{Path, PathBuf};
-use std::process::{Command, exit, Output};
+use std::process::{exit, Command, Output};
 use std::time::Instant;
+use std::{fs, io, panic};
 
 use atty::Stream;
 use clap::CommandFactory;
@@ -13,7 +13,7 @@ use clap::Parser as CliParser;
 use regex::bytes::Regex;
 use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
 
-use crate::core::{Error, Parser};
+use crate::core::{Error, OptimizerSettings, Parser};
 
 /// A list of paths and contents to copy into the build directory
 const OUT_DIR_FILES: &[(&str, &[u8])] = &[
@@ -156,7 +156,7 @@ impl Context {
             }
         };
 
-        match Parser::load(&ir) {
+        match Parser::load(&ir, OptimizerSettings::full()) {
             Ok(parser) => parser,
             Err(Error::Load(message)) => self.exit_with_error(message),
             Err(Error::LeftRecursive(left_recursive)) => {

@@ -1,0 +1,27 @@
+{
+  "start": 0,
+  "instructions": [
+    { "series": 0 }
+  ],
+  "series": [
+    [
+      {
+        "negated": false,
+        "ranges": [[1, 1]]
+      },
+      {
+        "negated": false,
+        "ranges": [[2, 2]]
+      },
+      {
+        "negated": false,
+        "ranges": [[3, 3]]
+      },
+      {
+        "negated": false,
+        "ranges": [[4, 4]]
+      }
+    ]
+  ],
+  "labels": []
+}

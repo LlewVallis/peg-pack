@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use crate::core::{Instruction, Parser};
 use crate::core::fixed_point::FixedPointStates;
-use crate::core::InstructionId;
 use crate::core::series::SeriesId;
+use crate::core::InstructionId;
+use crate::core::{Instruction, Parser};
 
 impl Parser {
     /// Computes the instruction characters of the parser

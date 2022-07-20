@@ -25,7 +25,7 @@ pub struct Parser {
 }
 
 impl Parser {
-    pub fn load(ir: &[u8]) -> Result<Parser, Error> {
+    pub fn load(ir: &[u8], settings: OptimizerSettings) -> Result<Parser, Error> {
         let (mut parser, rule_names) = match Self::load_ir(ir) {
             Ok(result) => result,
             Err(err) => return Err(Error::Load(err)),
@@ -47,7 +47,7 @@ impl Parser {
             return Err(Error::LeftRecursive(left_recursive));
         }
 
-        parser.transform();
+        parser.transform(settings);
 
         Ok(parser)
     }
@@ -98,8 +98,8 @@ impl Parser {
         &mut self.start
     }
 
-    fn insert_series(&mut self, sequence: Series) -> SeriesId {
-        self.series.insert(sequence)
+    fn insert_series(&mut self, series: Series) -> SeriesId {
+        self.series.insert(series)
     }
 
     fn series(&self) -> impl DoubleEndedIterator<Item = (SeriesId, &Series)> + '_ {
@@ -118,25 +118,29 @@ impl Parser {
         &self.labels[id]
     }
 
-    fn relabel(&mut self, mut mapper: impl FnMut(InstructionId) -> InstructionId) {
-        let mut new_instructions = Store::new();
-
-        for (id, instruction) in self.instructions() {
-            let new_id = mapper(id);
-            let new_instruction = instruction.remapped(&mut mapper);
-            new_instructions.set(new_id, new_instruction);
-        }
-
-        self.instructions = new_instructions;
-        self.start = mapper(self.start);
-    }
-
     fn remap(&mut self, mut mapper: impl FnMut(InstructionId) -> InstructionId) {
         for (_, instruction) in self.instructions.iter_mut() {
             *instruction = instruction.remapped(&mut mapper);
         }
 
         self.start = mapper(self.start);
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub struct OptimizerSettings {
+    pub remove_delegates: bool,
+    pub merge_series: bool,
+    pub deduplicate: bool,
+}
+
+impl OptimizerSettings {
+    pub fn full() -> Self {
+        Self {
+            remove_delegates: true,
+            merge_series: true,
+            deduplicate: true,
+        }
     }
 }
 
