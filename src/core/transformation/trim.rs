@@ -5,7 +5,7 @@ impl Parser {
     /// Remove all unreachable instructions, classes and labels
     pub(super) fn trim(&mut self) {
         self.trim_instructions();
-        self.trim_classes();
+        self.trim_series();
         self.trim_labels();
     }
 
@@ -31,23 +31,23 @@ impl Parser {
         }
     }
 
-    fn trim_classes(&mut self) {
+    fn trim_series(&mut self) {
         let mut reachable = HashSet::new();
 
         for (_, instruction) in self.instructions() {
-            if let Instruction::Class(class) = instruction {
-                reachable.insert(class);
+            if let Instruction::Series(series) = instruction {
+                reachable.insert(series);
             }
         }
 
         let removals = self
-            .classes()
+            .series()
             .map(|(k, _)| k)
             .filter(|id| !reachable.contains(id))
             .collect::<Vec<_>>();
 
         for removal in removals {
-            self.classes.remove(removal);
+            self.series.remove(removal);
         }
     }
 

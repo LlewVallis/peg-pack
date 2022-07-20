@@ -1,12 +1,13 @@
 use crate::core::character::Character;
 use crate::core::{Instruction, Parser};
+use crate::core::series::Class;
 
 impl Parser {
     pub fn visualize(&self) -> String {
         let mut result = String::from("digraph {\n");
 
         self.visualize_instructions(&mut result);
-        self.visualize_classes(&mut result);
+        self.visualize_series(&mut result);
         self.visualize_labels(&mut result);
         self.visualize_components(&mut result);
 
@@ -38,10 +39,9 @@ impl Parser {
                     result.push_str(&format!("    i{} -> i{};\n", id.0, target.0));
                     result.push_str(&format!("    i{} -> l{};\n", id.0, label.0));
                 }
-                Instruction::Class(class) => {
-                    result.push_str(&format!("    i{} -> c{};\n", id.0, class.0));
+                Instruction::Series(class) => {
+                    result.push_str(&format!("    i{} -> s{};\n", id.0, class.0));
                 }
-                Instruction::Empty => {}
             };
         }
 
@@ -56,8 +56,7 @@ impl Parser {
             Instruction::Error(_) => "Error",
             Instruction::Delegate(_) => "Delegate",
             Instruction::Label(_, _) => "Label",
-            Instruction::Class(_) => "Class",
-            Instruction::Empty => "Empty",
+            Instruction::Series(_) => "Series",
         };
 
         let mut name = String::from(name);
@@ -77,35 +76,58 @@ impl Parser {
         name
     }
 
-    fn visualize_classes(&self, result: &mut String) {
-        for (id, class) in self.classes() {
+    fn visualize_series(&self, result: &mut String) {
+        for (id, series) in self.series() {
             let mut specifier = String::new();
 
-            if class.negated() {
-                specifier.push_str("^");
-            }
-
-            for (i, (start, end)) in class.ranges().enumerate() {
+            for (i, class) in series.classes().iter().enumerate() {
                 if i != 0 {
                     specifier.push_str(", ");
                 }
 
-                if start == end {
-                    specifier.push_str(&self.format_class_bound(start));
-                } else {
-                    specifier.push_str(&format!(
-                        "{}-{}",
-                        self.format_class_bound(start),
-                        self.format_class_bound(end)
-                    ));
-                }
+                specifier.push_str(&self.class_specifier(class));
             }
 
             result.push_str(&format!(
-                "    c{}[label=\"[{}] #{}\", shape=box];\n",
+                "    s{}[label=\"[{}] #{}\", shape=box];\n",
                 id.0, specifier, id.0
             ));
         }
+    }
+
+    fn class_specifier(&self, class: &Class) -> String {
+        let mut specifier = String::new();
+        let brackets = class.negated() || class.ranges().len() != 1;
+
+        if brackets {
+            specifier.push_str("[");
+        }
+
+        if class.negated() {
+            specifier.push_str("^");
+        }
+
+        for (i, (start, end)) in class.ranges().iter().enumerate() {
+            if i != 0 {
+                specifier.push_str(", ");
+            }
+
+            if start == end {
+                specifier.push_str(&self.format_class_bound(*start));
+            } else {
+                specifier.push_str(&format!(
+                    "{}-{}",
+                    self.format_class_bound(*start),
+                    self.format_class_bound(*end)
+                ));
+            }
+        }
+
+        if brackets {
+            specifier.push_str("]");
+        }
+
+        specifier
     }
 
     fn format_class_bound(&self, bound: u8) -> String {

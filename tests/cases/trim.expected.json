@@ -1,6 +1,10 @@
 {
   "start": 0,
-  "instructions": ["empty"],
-  "classes": [],
+  "instructions": [
+    { "series": 0 }
+  ],
+  "series": [
+    []
+  ],
   "labels": []
 }

@@ -4,7 +4,8 @@
   "start": 1,
   "instructions": [
     {
-      "name": "empty"
+      "name": "series",
+      "classes": []
     },
     {
       "name": "seq",

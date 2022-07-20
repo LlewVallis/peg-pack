@@ -2,13 +2,13 @@
   "start": 0,
   "instructions": [
     { "seq": [1, 1] },
-    { "class": 0 }
+    { "series": 0 }
   ],
-  "classes": [
-    {
+  "series": [
+    [{
       "negated": false,
       "ranges": [[4, 8]]
-    }
+    }]
   ],
   "labels": []
 }

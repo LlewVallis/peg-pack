@@ -167,7 +167,7 @@ function normalizeRanges(ranges) {
 function seq(...rules) {
     const instructions = rules.map(resolveInstruction);
 
-    let result = createInstruction("empty");
+    let result = g.empty;
 
     for (const instruction of instructions) {
         const resultInstruction = resolveInstruction(result);
@@ -198,7 +198,7 @@ function then(...syncs) {
 function choice(...rules) {
     const instructions = rules.map(resolveInstruction);
 
-    let result = createInstruction("class", { negated: false, ranges: [] });
+    let result = g.never;
 
     for (const instruction of instructions) {
         const resultInstruction = resolveInstruction(result);
@@ -209,7 +209,7 @@ function choice(...rules) {
 }
 
 function strictChoice(...rules) {
-    let result = createInstruction("class", { negated: false, ranges: [] });
+    let result = g.never;
 
     for (const rule of rules) {
         const strictInstruction = resolveInstruction(g.seq(g.notAhead(result), rule));
@@ -270,16 +270,26 @@ function label(label, rule) {
 
 function oneOf(...ranges) {
     ranges = normalizeRanges(ranges);
-    return createInstruction("class", { negated: false, ranges });
+    return createInstruction("series", {
+        classes: [{ negated: false, ranges }]
+    });
 }
 
 function noneOf(...ranges) {
     ranges = normalizeRanges(ranges);
-    return createInstruction("class", { negated: true, ranges });
+    return createInstruction("series", {
+        classes: [{ negated: true, ranges }]
+    });
 }
 
 function empty() {
-    return createInstruction("empty");
+    return createInstruction("series", { classes: [] });
+}
+
+function never() {
+    return createInstruction("series", {
+        classes: [{ negated: false, ranges: [] }]
+    });
 }
 
 function opt(...rules) {
@@ -402,6 +412,7 @@ globalThis.g = prepareInterface({
     oneOf,
     noneOf,
     empty,
+    never,
     opt,
     repOne,
     rep,

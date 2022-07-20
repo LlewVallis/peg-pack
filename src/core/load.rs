@@ -4,7 +4,8 @@ use std::collections::HashMap;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 
-use crate::core::{Class, Instruction, InstructionId, Parser};
+use crate::core::{Instruction, InstructionId, Parser};
+use crate::core::series::{Class, Series};
 
 /// Required IR file version
 const VERSION: u32 = 0;
@@ -87,19 +88,24 @@ impl Loader {
                 let target = self.load_reference(*target)?;
                 self.parser.insert(Instruction::Delegate(target))
             }
-            InstructionIr::Class {
-                negated, ranges, ..
+            InstructionIr::Series {
+                classes, ..
             } => {
-                let mut class = Class::new(*negated);
+                let mut series = Series::empty();
 
-                for (start, end) in ranges {
-                    class.insert(*start, *end);
-                }
+                for class_ir in classes {
+                    let mut class = Class::new(class_ir.negated);
 
-                let class = self.parser.insert_class(class);
-                self.parser.insert(Instruction::Class(class))
+                    for (lower, upper) in &class_ir.ranges {
+                        class.insert(*lower, *upper);
+                    }
+
+                    series.append(class);
+                };
+
+                let series = self.parser.insert_series(series);
+                self.parser.insert(Instruction::Series(series))
             }
-            InstructionIr::Empty { .. } => self.parser.insert(Instruction::Empty),
         };
 
         match ir {
@@ -109,8 +115,7 @@ impl Loader {
             | InstructionIr::Error { rule_name, .. }
             | InstructionIr::Label { rule_name, .. }
             | InstructionIr::Delegate { rule_name, .. }
-            | InstructionIr::Class { rule_name, .. }
-            | InstructionIr::Empty { rule_name } => {
+            | InstructionIr::Series { rule_name, .. } => {
                 let name = rule_name.unwrap_or_else(|| String::from("<anonymous>"));
                 self.rule_names.insert(id, name);
             }
@@ -181,13 +186,16 @@ enum InstructionIr {
         rule_name: Option<String>,
     },
     #[serde(rename_all = "camelCase")]
-    Class {
-        negated: bool,
-        ranges: Vec<(u8, u8)>,
+    Series {
+        classes: Vec<ClassIr>,
         rule_name: Option<String>,
-    },
-    #[serde(rename_all = "camelCase")]
-    Empty { rule_name: Option<String> },
+    }
+}
+
+#[derive(Deserialize)]
+struct ClassIr {
+    negated: bool,
+    ranges: Vec<(u8, u8)>,
 }
 
 struct VersionCheck;

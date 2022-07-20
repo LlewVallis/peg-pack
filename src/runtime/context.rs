@@ -44,10 +44,6 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         }
     }
 
-    unsafe fn peek(&self) -> Option<u8> {
-        self.input.get(self.position)
-    }
-
     unsafe fn state(&self) -> State {
         *self.state_stack.top()
     }
@@ -258,24 +254,17 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         *self.state_mut() = TARGET;
     }
 
-    pub unsafe fn state_class(&mut self, in_class: impl FnOnce(u8) -> bool) {
-        if let Some(char) = self.peek() {
-            if in_class(char) {
-                self.position += 1;
-                let result = Match::error_free(1, 1);
-                self.set_result(ParseResult::Matched(result));
-                self.pop_state();
-                return;
-            }
+    pub unsafe fn state_series(&mut self, matcher: impl FnOnce(&I, usize) -> (bool, usize)) {
+        let (matched, length) = matcher(self.input, self.position);
+
+        if matched {
+            self.position += length;
+            let result = Match::error_free(length, length);
+            self.set_result(ParseResult::Matched(result));
+        } else {
+            self.set_result(ParseResult::Unmatched { scan_distance: length })
         }
 
-        self.set_result(ParseResult::Unmatched { scan_distance: 1 });
-        self.pop_state();
-    }
-
-    pub unsafe fn state_empty(&mut self) {
-        let result = Match::empty(0);
-        self.set_result(ParseResult::Matched(result));
         self.pop_state();
     }
 }

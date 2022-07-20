@@ -6,30 +6,30 @@ use std::hash::Hasher;
 
 impl Parser {
     pub(super) fn deduplicate(&mut self) {
-        self.deduplicate_classes();
+        self.deduplicate_series();
         self.deduplicate_labels();
         self.deduplicate_components();
         self.trim();
     }
 
-    /// Merge duplicate classes into one
-    fn deduplicate_classes(&mut self) {
+    /// Merge duplicate series into one
+    fn deduplicate_series(&mut self) {
         let mut canonicals = HashMap::new();
         let mut mappings = HashMap::new();
         let mut removals = Vec::new();
 
-        for (id, class) in self.classes() {
-            if let Some(canonical_id) = canonicals.get(class) {
+        for (id, series) in self.series() {
+            if let Some(canonical_id) = canonicals.get(series) {
                 mappings.insert(id, *canonical_id);
                 removals.push(id);
             } else {
-                canonicals.insert(class, id);
+                canonicals.insert(series, id);
                 mappings.insert(id, id);
             }
         }
 
         for (_, instruction) in self.instructions.iter_mut() {
-            if let Instruction::Class(id) = instruction {
+            if let Instruction::Series(id) = instruction {
                 *id = mappings[id];
             }
         }
@@ -234,15 +234,14 @@ impl Parser {
             Instruction::NotAhead(_) => hasher.write_u8(2),
             Instruction::Error(_) => hasher.write_u8(3),
             Instruction::Label(_, label) => {
-                hasher.write_u8(5);
+                hasher.write_u8(4);
                 hasher.write_usize(label.0);
             }
-            Instruction::Delegate(_) => hasher.write_u8(6),
-            Instruction::Class(class) => {
-                hasher.write_u8(7);
-                hasher.write_usize(class.0)
+            Instruction::Delegate(_) => hasher.write_u8(5),
+            Instruction::Series(series) => {
+                hasher.write_u8(6);
+                hasher.write_usize(series.0)
             }
-            Instruction::Empty => hasher.write_u8(9),
         }
     }
 

@@ -1,5 +1,6 @@
 use serde::Serialize;
 use std::collections::BTreeSet;
+use crate::core::series::{Series, SeriesId};
 
 use crate::store::{Store, StoreKey};
 
@@ -11,12 +12,13 @@ mod load;
 mod structure;
 mod transformation;
 mod validation;
+mod series;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Parser {
     start: InstructionId,
     instructions: Store<InstructionId, Instruction>,
-    classes: Store<ClassId, Class>,
+    series: Store<SeriesId, Series>,
     labels: Store<LabelId, String>,
 }
 
@@ -53,14 +55,14 @@ impl Parser {
         struct Proxy<'a> {
             start: &'a InstructionId,
             instructions: &'a Store<InstructionId, Instruction>,
-            classes: &'a Store<ClassId, Class>,
+            series: &'a Store<SeriesId, Series>,
             labels: &'a Store<LabelId, String>,
         }
 
         let proxy = Proxy {
             start: &self.start,
             instructions: &self.instructions,
-            classes: &self.classes,
+            series: &self.series,
             labels: &self.labels,
         };
 
@@ -71,7 +73,7 @@ impl Parser {
         Self {
             start: InstructionId(0),
             instructions: Store::new(),
-            classes: Store::new(),
+            series: Store::new(),
             labels: Store::new(),
         }
     }
@@ -94,12 +96,12 @@ impl Parser {
         &mut self.start
     }
 
-    fn insert_class(&mut self, class: Class) -> ClassId {
-        self.classes.insert(class)
+    fn insert_series(&mut self, sequence: Series) -> SeriesId {
+        self.series.insert(sequence)
     }
 
-    fn classes(&self) -> impl Iterator<Item = (ClassId, &Class)> + '_ {
-        self.classes.iter()
+    fn series(&self) -> impl Iterator<Item = (SeriesId, &Series)> + '_ {
+        self.series.iter()
     }
 
     fn insert_label(&mut self, label: String) -> LabelId {
@@ -150,19 +152,6 @@ impl StoreKey for InstructionId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Serialize)]
-struct ClassId(pub usize);
-
-impl StoreKey for ClassId {
-    fn from_usize(value: usize) -> Self {
-        Self(value)
-    }
-
-    fn into_usize(self) -> usize {
-        self.0
-    }
-}
-
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Serialize)]
 struct LabelId(pub usize);
 
 impl StoreKey for LabelId {
@@ -184,8 +173,7 @@ enum Instruction {
     Error(InstructionId),
     Label(InstructionId, LabelId),
     Delegate(InstructionId),
-    Class(ClassId),
-    Empty,
+    Series(SeriesId),
 }
 
 impl Instruction {
@@ -198,7 +186,7 @@ impl Instruction {
             | Instruction::Error(target)
             | Instruction::Label(target, _)
             | Instruction::Delegate(target) => (Some(target), None),
-            Instruction::Class(_) | Instruction::Empty => (None, None),
+            Instruction::Series(_) => (None, None),
         };
 
         first.into_iter().chain(second)
@@ -214,57 +202,11 @@ impl Instruction {
             Instruction::Error(target) => Instruction::Error(mapper(target)),
             Instruction::Label(target, label) => Instruction::Label(mapper(target), label),
             Instruction::Delegate(target) => Instruction::Delegate(mapper(target)),
-            Instruction::Class(_) | Instruction::Empty => *self,
+            Instruction::Series(_) => *self,
         }
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Hash, Serialize)]
-struct Class {
-    negated: bool,
-    ranges: Vec<(u8, u8)>,
-}
-
-impl Class {
-    pub fn new(negated: bool) -> Self {
-        Self {
-            negated,
-            ranges: vec![],
-        }
-    }
-
-    pub fn insert<T: Into<u8>>(&mut self, start: T, end: T) {
-        let start = start.into();
-        let end = end.into();
-
-        assert!(start <= end);
-        self.ranges.push((start, end));
-
-        self.ranges.sort_unstable_by_key(|(start, _)| *start);
-
-        let mut i = 0;
-        while i + 1 < self.ranges.len() {
-            let current = self.ranges[i];
-            let next = &mut self.ranges[i + 1];
-
-            if current.1 >= next.0 {
-                next.0 = u8::min(current.0, next.0);
-                next.1 = u8::max(current.1, next.1);
-                self.ranges.remove(i);
-            } else {
-                i += 1;
-            }
-        }
-    }
-
-    pub fn negated(&self) -> bool {
-        self.negated
-    }
-
-    pub fn ranges(&self) -> impl Iterator<Item = (u8, u8)> + '_ {
-        self.ranges.iter().copied()
-    }
-}
 
 #[derive(Debug)]
 pub enum Error {

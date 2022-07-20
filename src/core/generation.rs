@@ -1,7 +1,8 @@
-use crate::core::InstructionId;
-use crate::core::{Class, Instruction, Parser};
+use crate::core::{Instruction, InstructionId, Parser};
 use crate::output::{Codegen, Statements};
 use std::collections::HashSet;
+use std::mem;
+use crate::core::series::{Class, Series};
 
 #[derive(Copy, Clone)]
 struct State {
@@ -43,7 +44,7 @@ impl Parser {
         self.generate_labels(&mut codegen);
         self.generate_state_constants(&mut codegen);
         self.generate_state_functions(&mut codegen);
-        self.generate_class_functions(&mut codegen);
+        self.generate_series_functions(&mut codegen);
         self.generate_dispatch_function(&mut codegen);
         self.generate_macro(&mut codegen);
 
@@ -196,13 +197,9 @@ impl Parser {
                 assert_eq!(state.stage, 0);
                 self.generate_unary_consuming_dispatch(&mut function, "state_delegate", id);
             }
-            Instruction::Class(class_id) => {
+            Instruction::Series(series_id) => {
                 assert_eq!(state.stage, 0);
-                function.line(&format!("ctx.state_class(class_{});", class_id.0));
-            }
-            Instruction::Empty => {
-                assert_eq!(state.stage, 0);
-                function.line("ctx.state_empty();");
+                function.line(&format!("ctx.state_series(series_{});", series_id.0));
             }
         }
     }
@@ -231,18 +228,56 @@ impl Parser {
         block.line(&format!("ctx.{}::<STATE_{}_0>();", name, target.0));
     }
 
-    fn generate_class_functions(&self, codegen: &mut Codegen) {
-        for (id, class) in self.classes() {
-            self.generate_class_function(codegen, id.0, class);
+    fn generate_series_functions(&self, codegen: &mut Codegen) {
+        for (id, series) in self.series() {
+            self.generate_series_function(codegen, id.0, series);
         }
     }
 
-    fn generate_class_function(&self, codegen: &mut Codegen, id: usize, class: &Class) {
-        let signature = format!("fn class_{}(char: u8) -> bool", id);
+    fn generate_series_function(
+        &self, codegen: &mut Codegen, id: usize, series: &Series
+    ) {
+        let signature = format!(
+            "fn series_{}<I: Input + ?Sized>(input: &I, position: usize) -> (bool, usize)",
+            id
+        );
+
         let mut function = codegen.function(&signature);
 
-        let ranges = class.ranges().collect::<Vec<_>>();
-        self.generate_class_ranges(&mut function, &ranges, class.negated());
+        if series.is_never() {
+            function.line("(false, 0)");
+            return;
+        }
+
+        function.line("let mut length = 0;");
+        function.newline();
+
+        for (i, _) in series.classes().iter().enumerate() {
+            let mut char_match = function.match_statement("input.get(position + length)");
+
+            let pattern = format!("Some(char) if class_{}_{}(char)", id, i);
+            char_match.case_line(&pattern, "length += 1");
+            char_match.case_line("_", "return (false, length + 1)");
+
+            mem::drop(char_match);
+            function.newline();
+        }
+
+        function.line("(true, length)");
+
+        mem::drop(function);
+        for (i, class) in series.classes().iter().enumerate() {
+            self.generate_class_function(codegen, id, i, class);
+        }
+    }
+
+    fn generate_class_function(
+        &self, codegen: &mut Codegen, series: usize, index: usize, class: &Class
+    ) {
+        let signature = format!("fn class_{}_{}(char: u8) -> bool", series, index);
+        let mut function = codegen.function(&signature);
+
+        self.generate_class_ranges(&mut function, class.ranges(), class.negated());
 
         function.line(&format!("{}", class.negated()));
     }
@@ -304,8 +339,7 @@ impl Parser {
                 Instruction::Error(_) => 2,
                 Instruction::Label(_, _) => 2,
                 Instruction::Delegate(_) => 1,
-                Instruction::Class(_) => 1,
-                Instruction::Empty => 1,
+                Instruction::Series(_) => 1,
             };
 
             for stage in 0..stages {

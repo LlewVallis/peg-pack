@@ -1,0 +1,24 @@
+{
+  "version": 0,
+  "status": "success",
+  "start": 0,
+  "instructions": [
+    {
+      "name": "series",
+      "classes": [
+        {
+          "negated": false,
+          "ranges": [[1, 1]]
+        },
+        {
+          "negated": false,
+          "ranges": []
+        },
+        {
+          "negated": true,
+          "ranges": []
+        }
+      ]
+    }
+  ]
+}

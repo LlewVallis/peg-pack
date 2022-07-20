@@ -4,14 +4,15 @@
     { "seq": [1, 2] },
     { "choice": [2, 4] },
     { "seq": [3, 1] },
-    { "class": 0 },
-    "empty"
+    { "series": 0 },
+    { "series": 1 }
   ],
-  "classes": [
-    {
+  "series": [
+    [{
       "negated": true,
       "ranges": []
-    }
+    }],
+    []
   ],
   "labels": []
 }

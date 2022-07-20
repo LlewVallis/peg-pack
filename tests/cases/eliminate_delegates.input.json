@@ -8,7 +8,8 @@
       "target": 1
     },
     {
-      "name": "empty"
+      "name": "series",
+      "classes": []
     }
   ]
 }

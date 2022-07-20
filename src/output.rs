@@ -116,6 +116,10 @@ impl<'a> Statements<'a> {
         self.codegen.line(content)
     }
 
+    pub fn newline(&mut self) {
+        self.codegen.newline();
+    }
+
     pub fn match_statement(&mut self, control: &str) -> Match {
         Match::new(self.codegen, control)
     }

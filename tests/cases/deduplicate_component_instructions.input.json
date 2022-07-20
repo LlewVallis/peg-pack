@@ -9,9 +9,11 @@
       "second": 3
     },
     {
-      "name": "class",
-      "negated": true,
-      "ranges": []
+      "name": "series",
+      "classes": [{
+        "negated": true,
+        "ranges": []
+      }]
     },
     {
       "name": "seq",

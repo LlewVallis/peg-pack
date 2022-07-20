@@ -3,8 +3,10 @@
   "instructions": [
     { "label": [1, 0] },
     { "label": [2, 0] },
-    "empty"
+    { "series": 0 }
   ],
-  "classes": [],
+  "series": [
+    []
+  ],
   "labels": ["foo"]
 }

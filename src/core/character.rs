@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
 use crate::core::fixed_point::FixedPointStates;
-use crate::core::{ClassId, InstructionId};
+use crate::core::{InstructionId};
 use crate::core::{Instruction, Parser};
+use crate::core::series::SeriesId;
 
 impl Parser {
     /// Computes the instruction characters of the parser
@@ -20,8 +21,7 @@ impl Parser {
             Instruction::Error(target)
             | Instruction::Label(target, _)
             | Instruction::Delegate(target) => self.characterize_delegate_like(target, states),
-            Instruction::Class(class) => self.characterize_class(class),
-            Instruction::Empty => self.characterize_empty(),
+            Instruction::Series(series) => self.characterize_series(series),
         })
     }
 
@@ -88,23 +88,13 @@ impl Parser {
         }
     }
 
-    fn characterize_class(&self, class: ClassId) -> Character {
-        let class = &self.classes[class];
-
-        let empty = class.ranges().count() == 0 && !class.negated();
+    fn characterize_series(&self, series: SeriesId) -> Character {
+        let series = &self.series[series];
 
         Character {
-            transparent: false,
-            antitransparent: !empty,
-            fallible: true,
-        }
-    }
-
-    fn characterize_empty(&self) -> Character {
-        Character {
-            transparent: true,
-            antitransparent: false,
-            fallible: false,
+            transparent: series.is_empty(),
+            antitransparent: !series.is_empty() && !series.is_never(),
+            fallible: !series.is_empty()
         }
     }
 }

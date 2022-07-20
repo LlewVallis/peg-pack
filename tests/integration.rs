@@ -30,11 +30,11 @@ macro_rules! cases {
 }
 
 cases!(
-    empty,
     reorder_from_start,
     trim,
     eliminate_delegates,
-    deduplicate_class,
+    fold_never_series,
+    deduplicate_series,
     deduplicate_label,
     deduplicate_components,
     deduplicate_rotated_components,

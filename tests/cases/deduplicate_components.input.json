@@ -9,11 +9,16 @@
       "second": 5
     },
     {
-      "name": "class",
-      "negated": true,
-      "ranges": []
+      "name": "series",
+      "classes": [{
+        "negated": true,
+        "ranges": []
+      }]
     },
-    {"name": "empty" },
+    {
+      "name": "series",
+      "classes": []
+    },
     {
       "name": "choice",
       "first": 4,

@@ -14,7 +14,8 @@
       "target": 2
     },
     {
-      "name": "empty"
+      "name": "series",
+      "classes": []
     }
   ]
 }

@@ -126,6 +126,11 @@ interface GrammarInterface {
   readonly empty: () => Rule;
 
   /**
+   * Never matches.
+   */
+  readonly never: () => Rule;
+
+  /**
    * Optionally matches one of the provided rules.
    *
    * Equivalent to `strictChoice(commit(choice(...rules)), empty)`.

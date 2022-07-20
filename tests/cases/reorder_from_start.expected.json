@@ -2,8 +2,10 @@
   "start": 0,
   "instructions": [
     { "seq": [1, 1] },
-    "empty"
+    { "series": 0 }
   ],
-  "classes": [],
+  "series": [
+    []
+  ],
   "labels": []
 }

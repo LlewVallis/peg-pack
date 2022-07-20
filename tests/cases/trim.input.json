@@ -4,12 +4,15 @@
   "start": 0,
   "instructions": [
     {
-      "name": "empty"
+      "name": "series",
+      "classes": []
     },
     {
-      "name": "class",
-      "negated": false,
-      "ranges": []
+      "name": "series",
+      "classes": [{
+        "negated": true,
+        "ranges": []
+      }]
     },
     {
       "name": "label",
