@@ -1,7 +1,8 @@
-use serde::Serialize;
 use std::collections::BTreeSet;
-use crate::core::series::{Series, SeriesId};
 
+use serde::Serialize;
+
+use crate::core::series::{Series, SeriesId};
 use crate::store::{Store, StoreKey};
 
 mod character;
@@ -9,10 +10,11 @@ mod fixed_point;
 mod generation;
 mod graphvis;
 mod load;
+mod series;
 mod structure;
 mod transformation;
 mod validation;
-mod series;
+mod walk;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Parser {
@@ -84,7 +86,7 @@ impl Parser {
         id
     }
 
-    fn instructions(&self) -> impl Iterator<Item = (InstructionId, Instruction)> + '_ {
+    fn instructions(&self) -> impl DoubleEndedIterator<Item = (InstructionId, Instruction)> + '_ {
         self.instructions.iter_copied()
     }
 
@@ -100,7 +102,7 @@ impl Parser {
         self.series.insert(sequence)
     }
 
-    fn series(&self) -> impl Iterator<Item = (SeriesId, &Series)> + '_ {
+    fn series(&self) -> impl DoubleEndedIterator<Item = (SeriesId, &Series)> + '_ {
         self.series.iter()
     }
 
@@ -108,7 +110,7 @@ impl Parser {
         self.labels.insert(label)
     }
 
-    fn labels(&self) -> impl Iterator<Item = (LabelId, &str)> + '_ {
+    fn labels(&self) -> impl DoubleEndedIterator<Item = (LabelId, &str)> + '_ {
         self.labels.iter().map(|(id, label)| (id, label.as_str()))
     }
 
@@ -177,7 +179,7 @@ enum Instruction {
 }
 
 impl Instruction {
-    fn successors(&self) -> impl Iterator<Item = InstructionId> {
+    fn successors(&self) -> impl DoubleEndedIterator<Item = InstructionId> {
         let (first, second) = match *self {
             Instruction::Seq(first, second) | Instruction::Choice(first, second) => {
                 (Some(first), Some(second))
@@ -206,7 +208,6 @@ impl Instruction {
         }
     }
 }
-
 
 #[derive(Debug)]
 pub enum Error {

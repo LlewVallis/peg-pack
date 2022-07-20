@@ -1,4 +1,5 @@
 use serde::Serialize;
+
 use crate::store::StoreKey;
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Serialize)]
@@ -22,7 +23,9 @@ pub struct Series {
 
 impl Series {
     pub fn empty() -> Self {
-        Self { classes: Vec::new() }
+        Self {
+            classes: Vec::new(),
+        }
     }
 
     pub fn is_empty(&self) -> bool {

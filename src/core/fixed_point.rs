@@ -1,6 +1,7 @@
-use crate::core::{Instruction, InstructionId, Parser};
 use std::collections::{HashMap, HashSet};
 use std::ops::Index;
+
+use crate::core::{Instruction, InstructionId, Parser};
 
 impl Parser {
     /// Solves an inductive function over the instruction graph by iterating

@@ -1,10 +1,10 @@
+use std::{fs, io, panic};
 use std::fs::File;
 use std::io::{ErrorKind, Write};
 use std::panic::PanicInfo;
 use std::path::{Path, PathBuf};
-use std::process::{exit, Command, Output};
+use std::process::{Command, exit, Output};
 use std::time::Instant;
-use std::{fs, io, panic};
 
 use atty::Stream;
 use clap::CommandFactory;

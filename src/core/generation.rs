@@ -1,8 +1,9 @@
-use crate::core::{Instruction, InstructionId, Parser};
-use crate::output::{Codegen, Statements};
 use std::collections::HashSet;
 use std::mem;
+
+use crate::core::{Instruction, InstructionId, Parser};
 use crate::core::series::{Class, Series};
+use crate::output::{Codegen, Statements};
 
 #[derive(Copy, Clone)]
 struct State {
@@ -234,9 +235,7 @@ impl Parser {
         }
     }
 
-    fn generate_series_function(
-        &self, codegen: &mut Codegen, id: usize, series: &Series
-    ) {
+    fn generate_series_function(&self, codegen: &mut Codegen, id: usize, series: &Series) {
         let signature = format!(
             "fn series_{}<I: Input + ?Sized>(input: &I, position: usize) -> (bool, usize)",
             id
@@ -272,7 +271,11 @@ impl Parser {
     }
 
     fn generate_class_function(
-        &self, codegen: &mut Codegen, series: usize, index: usize, class: &Class
+        &self,
+        codegen: &mut Codegen,
+        series: usize,
+        index: usize,
+        class: &Class,
     ) {
         let signature = format!("fn class_{}_{}(char: u8) -> bool", series, index);
         let mut function = codegen.function(&signature);

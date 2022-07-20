@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use crate::core::fixed_point::FixedPointStates;
-use crate::core::{InstructionId};
 use crate::core::{Instruction, Parser};
+use crate::core::fixed_point::FixedPointStates;
+use crate::core::InstructionId;
 use crate::core::series::SeriesId;
 
 impl Parser {
@@ -94,7 +94,7 @@ impl Parser {
         Character {
             transparent: series.is_empty(),
             antitransparent: !series.is_empty() && !series.is_never(),
-            fallible: !series.is_empty()
+            fallible: !series.is_empty(),
         }
     }
 }

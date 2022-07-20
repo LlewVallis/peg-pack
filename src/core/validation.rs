@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::core::character::Character;
 use crate::core::{Instruction, Parser};
 use crate::core::{InstructionId, ValidationError};
+use crate::core::character::Character;
 
 impl Parser {
     /// Finds errors in the grammar

@@ -1,20 +1,20 @@
 //! Runtime common to all generated parsers. Copied into the build directory
 //! when generating a parser
 
+use std::fmt::{self, Debug, Formatter};
+
+use buffered_iter::BufferedIter;
+pub use context::Context;
+pub use grammar::Grammar;
+pub use input::*;
+pub use result::{Match, ParseResult};
+use result::{EnterExit, Label};
+
 mod buffered_iter;
 mod context;
 mod grammar;
 mod input;
 mod result;
-
-pub use context::Context;
-pub use grammar::Grammar;
-pub use input::*;
-pub use result::{Match, ParseResult};
-
-use buffered_iter::BufferedIter;
-use result::{EnterExit, Label};
-use std::fmt::{self, Debug, Formatter};
 
 pub struct GenParseMatch<G: Grammar>(pub Match<G>);
 
@@ -23,7 +23,7 @@ impl<G: Grammar> GenParseMatch<G> {
         match node.label() {
             Label::Custom(label) => write!(f, "{:?}", label)?,
             Label::Error => write!(f, "Error")?,
-            Label::None => {},
+            Label::None => {}
         }
 
         write!(f, "[{}]", node.distance())

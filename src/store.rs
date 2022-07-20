@@ -1,11 +1,12 @@
-use serde::ser::SerializeSeq;
-use serde::{Serialize, Serializer};
 use std::collections::BTreeMap;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
+
+use serde::{Serialize, Serializer};
+use serde::ser::SerializeSeq;
 
 pub trait StoreKey: Copy + Eq + Ord + Hash {
     fn from_usize(value: usize) -> Self;
@@ -53,11 +54,11 @@ impl<K: StoreKey, V> Store<K, V> {
         self.map.remove(&id.into_usize());
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (K, &V)> {
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = (K, &V)> {
         self.map.iter().map(|(k, v)| (K::from_usize(*k), v))
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (K, &mut V)> {
+    pub fn iter_mut(&mut self) -> impl DoubleEndedIterator<Item = (K, &mut V)> {
         self.map.iter_mut().map(|(k, v)| (K::from_usize(*k), v))
     }
 }
@@ -77,7 +78,7 @@ impl<K: StoreKey, V> IndexMut<K> for Store<K, V> {
 }
 
 impl<K: StoreKey, V: Copy> Store<K, V> {
-    pub fn iter_copied(&self) -> impl Iterator<Item = (K, V)> + '_ {
+    pub fn iter_copied(&self) -> impl DoubleEndedIterator<Item = (K, V)> + '_ {
         self.iter().map(|(k, v)| (k, *v))
     }
 }

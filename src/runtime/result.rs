@@ -1,8 +1,9 @@
-use super::Grammar;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::hint::unreachable_unchecked;
 use std::iter::FusedIterator;
+
+use super::Grammar;
 
 pub enum ParseResult<G: Grammar> {
     Matched(Match<G>),

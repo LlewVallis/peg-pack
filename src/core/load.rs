@@ -1,8 +1,8 @@
-use regex::Regex;
 use std::collections::HashMap;
 
-use serde::de::Error;
+use regex::Regex;
 use serde::{Deserialize, Deserializer};
+use serde::de::Error;
 
 use crate::core::{Instruction, InstructionId, Parser};
 use crate::core::series::{Class, Series};
@@ -88,9 +88,7 @@ impl Loader {
                 let target = self.load_reference(*target)?;
                 self.parser.insert(Instruction::Delegate(target))
             }
-            InstructionIr::Series {
-                classes, ..
-            } => {
+            InstructionIr::Series { classes, .. } => {
                 let mut series = Series::empty();
 
                 for class_ir in classes {
@@ -101,7 +99,7 @@ impl Loader {
                     }
 
                     series.append(class);
-                };
+                }
 
                 let series = self.parser.insert_series(series);
                 self.parser.insert(Instruction::Series(series))
@@ -189,7 +187,7 @@ enum InstructionIr {
     Series {
         classes: Vec<ClassIr>,
         rule_name: Option<String>,
-    }
+    },
 }
 
 #[derive(Deserialize)]

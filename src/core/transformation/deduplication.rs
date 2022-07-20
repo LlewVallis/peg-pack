@@ -1,8 +1,10 @@
-use crate::core::structure::{Component, ComponentId, Components};
-use crate::core::{Instruction, InstructionId, Parser};
-use seahash::SeaHasher;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::hash::Hasher;
+
+use seahash::SeaHasher;
+
+use crate::core::{Instruction, InstructionId, Parser};
+use crate::core::structure::{Component, ComponentId, Components};
 
 impl Parser {
     pub(super) fn deduplicate(&mut self) {
@@ -190,9 +192,9 @@ impl Parser {
         component: &Component,
         mappings: &HashMap<InstructionId, InstructionId>,
     ) -> u64 {
-        const BACKREFERENCE_HASH: &'static [u8] = &[0];
-        const INSTRUCTION_HASH: &'static [u8] = &[1];
-        const OUTREFERENCE_HASH: &'static [u8] = &[2];
+        const BACKREFERENCE_HASH: &[u8] = &[0];
+        const INSTRUCTION_HASH: &[u8] = &[1];
+        const OUTREFERENCE_HASH: &[u8] = &[2];
 
         let mut hasher = SeaHasher::new();
         let mut backreferences = HashMap::new();

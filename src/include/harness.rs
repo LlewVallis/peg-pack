@@ -1,8 +1,8 @@
-#[path = "../parser.rs"]
-mod parser;
-
 use std::io::{Read, stdin};
 use std::time::Instant;
+
+#[path = "../parser.rs"]
+mod parser;
 
 pub fn main() {
     let mut input = Vec::new();

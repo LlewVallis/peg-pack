@@ -1,5 +1,5 @@
-use crate::core::character::Character;
 use crate::core::{Instruction, Parser};
+use crate::core::character::Character;
 use crate::core::series::Class;
 
 impl Parser {
