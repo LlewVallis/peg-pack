@@ -58,7 +58,7 @@ impl Codegen {
         self.space();
         self.open_brace();
 
-        Trait { codegen: self }
+        Trait { codegen: self, first: false }
     }
 
     fn open_brace(&mut self) {
@@ -200,11 +200,25 @@ impl<'a> Drop for Enum<'a> {
 
 pub struct Trait<'a> {
     codegen: &'a mut Codegen,
+    first: bool,
 }
 
 impl<'a> Trait<'a> {
     pub fn function(&mut self, signature: &str) -> Statements {
-        self.codegen.function(signature)
+        if self.first {
+            self.codegen.newline();
+        } else {
+            self.first = true;
+        }
+
+        self.codegen.line("#[allow(unused)]");
+        self.codegen.write(signature);
+        self.codegen.space();
+        self.codegen.open_brace();
+
+        Statements::new(self.codegen, |codegen| {
+            codegen.close_brace();
+        })
     }
 }
 

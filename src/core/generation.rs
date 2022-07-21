@@ -69,7 +69,8 @@ impl Parser {
 
         mem::drop(enumeration);
 
-        codegen.trait_impl("Label", "LabelImpl");
+        codegen.line("impl Label for LabelImpl {}");
+        codegen.newline();
     }
 
     fn generate_expecteds(&self, codegen: &mut Codegen) {
