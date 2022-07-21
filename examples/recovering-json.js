@@ -1,36 +1,48 @@
-const ws = g.whitespace(g.choice(" ", "\n", "\r", "\t"));
+const token = () => g.choice(
+    g.repOne(wordCharacter),
+    string,
+    number,
+);
 
-const recover = () => ws.choice("}", "]", ",", value);
+const wordCharacter = () => g.oneOf(["a", "z"], ["A", "Z"]);
 
-const value = () => ws.choice(
+const keyword = value => g.seq(value, g.notAhead(wordCharacter));
+
+const h = g
+    .whitespace(g.choice(" ", "\n", "\r", "\t"))
+    .tokens(token);
+
+const recover = () => h.choice("}", "]", ",", value);
+
+const value = () => h.choice(
     object,
     array,
     string,
     number,
-    ws.label("null", "null"),
-    ws.label("boolean", "true"),
-    ws.label("boolean", "false"),
+    h.label("null", keyword("null")),
+    h.label("boolean", keyword("true")),
+    h.label("boolean", keyword("false")),
 );
 
-const object = () => ws.label("object", ws.then()(
+const object = () => h.label("object", h.then()(
     "{",
-    ws.until("}")(entry, ","),
+    h.until("}")(entry, ","),
     "}"
 ));
 
-const entry = () => ws.label("entry", ws.then(recover)(
-    ws.label("key", string),
+const entry = () => h.label("entry", h.then(recover)(
+    h.label("key", string),
     ":",
-    ws.label("value", value),
+    h.label("value", value),
 ));
 
-const array = () => ws.label("array", ws.then()(
+const array = () => h.label("array", h.then()(
     "[",
-    ws.until("]")(value, ","),
+    h.until("]")(value, ","),
     "]",
 ));
 
-const string = () => ws.label("string", g.then()(
+const string = () => g.label("string", g.then()(
     "\"",
     g.until("\"")(stringCharacter),
     "\"",
@@ -62,7 +74,7 @@ const recoveringHexDigit = () => g.choice(
 
 const hexDigit = () => g.oneOf(["0", "9"], ["a", "f"], ["A", "F"]);
 
-const number = () => ws.label("number", g.seq(
+const number = () => g.label("number", g.seq(
     g.opt("-"),
     g.choice(
         "0",
@@ -84,4 +96,4 @@ const startDigit = () => g.oneOf(["1", "9"]);
 
 const digit = () => g.oneOf(["0", "9"]);
 
-module.exports = ws.then()(ws.empty, value, ws.eof);
+module.exports = h.then()(h.empty, value, h.eof);

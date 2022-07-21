@@ -370,7 +370,8 @@ function eof() {
 }
 
 function whitespace(rule) {
-    const ws = this.rep(rule);
+    const ws = () => this.rep(rule);
+    anonymousRules.add(ws);
 
     const base = interfaceBases.get(this);
     const newBase = { ...base };
@@ -389,6 +390,15 @@ function whitespace(rule) {
 
         return oldSeq(...newRules);
     };
+
+    return prepareInterface(newBase);
+}
+
+function tokens(...rules) {
+    const base = interfaceBases.get(this);
+    const newBase = { ...base };
+
+    newBase.any = () => this.strictChoice(this.choice(...rules), this.any);
 
     return prepareInterface(newBase);
 }
@@ -431,6 +441,7 @@ globalThis.g = prepareInterface({
     any,
     eof,
     whitespace,
+    tokens,
 });
 
 process.on("uncaughtException", err => {

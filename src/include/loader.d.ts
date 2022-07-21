@@ -75,8 +75,8 @@ interface GrammarInterface {
    * ```
    * result = strictChoice(
    *   rule,
-   *   seq(ahead(...syncs, eof), error(empty)),
-   *   seq(error(any), result)
+   *   seq(ahead(...syncs, eof), error(empty, rule)),
+   *   seq(error(any, rule), result)
    * );
    * result
    * ```
@@ -234,6 +234,14 @@ interface GrammarInterface {
    * input they match.
    */
   readonly whitespace: (rule: RuleLike) => GrammarInterface;
+
+  /**
+   * Constructs a variant of this grammar interface where the `any` rule
+   * attempts to match one of the provided rules before falling back to the
+   * current interface's implementation of `any`. This notably also affects the
+   * `recover` rule.
+   */
+  readonly tokens: (...rules: RuleLike[]) => GrammarInterface;
 }
 
 declare global {
