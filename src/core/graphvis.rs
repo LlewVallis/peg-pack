@@ -1,5 +1,6 @@
 use crate::core::character::Character;
-use crate::core::series::Class;
+use crate::core::expected::Expected;
+use crate::core::series::{Class, Series};
 use crate::core::{Instruction, Parser};
 
 impl Parser {
@@ -9,7 +10,7 @@ impl Parser {
         self.visualize_instructions(&mut result);
         self.visualize_series(&mut result);
         self.visualize_labels(&mut result);
-        self.visualize_components(&mut result);
+        self.visualize_expecteds(&mut result);
 
         result.push_str("}");
         result
@@ -30,14 +31,16 @@ impl Parser {
                     result.push_str(&format!("    i{}:w -> i{};\n", id.0, first.0));
                     result.push_str(&format!("    i{}:e -> i{};\n", id.0, second.0));
                 }
-                Instruction::NotAhead(target)
-                | Instruction::Error(target)
-                | Instruction::Delegate(target) => {
+                Instruction::NotAhead(target) | Instruction::Delegate(target) => {
                     result.push_str(&format!("    i{} -> i{};\n", id.0, target.0));
                 }
                 Instruction::Label(target, label) => {
                     result.push_str(&format!("    i{} -> i{};\n", id.0, target.0));
                     result.push_str(&format!("    i{} -> l{};\n", id.0, label.0));
+                }
+                Instruction::Error(target, expected) => {
+                    result.push_str(&format!("    i{} -> i{};\n", id.0, target.0));
+                    result.push_str(&format!("    i{} -> e{};\n", id.0, expected.0));
                 }
                 Instruction::Series(class) => {
                     result.push_str(&format!("    i{} -> s{};\n", id.0, class.0));
@@ -53,7 +56,7 @@ impl Parser {
             Instruction::Seq(_, _) => "Sequence",
             Instruction::Choice(_, _) => "Choice",
             Instruction::NotAhead(_) => "Not ahead",
-            Instruction::Error(_) => "Error",
+            Instruction::Error(_, _) => "Error",
             Instruction::Delegate(_) => "Delegate",
             Instruction::Label(_, _) => "Label",
             Instruction::Series(_) => "Series",
@@ -78,21 +81,27 @@ impl Parser {
 
     fn visualize_series(&self, result: &mut String) {
         for (id, series) in self.series() {
-            let mut specifier = String::new();
-
-            for (i, class) in series.classes().iter().enumerate() {
-                if i != 0 {
-                    specifier.push_str(", ");
-                }
-
-                specifier.push_str(&self.class_specifier(class));
-            }
+            let specifier = self.series_specifier(series);
 
             result.push_str(&format!(
                 "    s{}[label=\"[{}] #{}\", shape=box];\n",
                 id.0, specifier, id.0
             ));
         }
+    }
+
+    fn series_specifier(&self, series: &Series) -> String {
+        let mut specifier = String::new();
+
+        for (i, class) in series.classes().iter().enumerate() {
+            if i != 0 {
+                specifier.push_str(", ");
+            }
+
+            specifier.push_str(&self.class_specifier(class));
+        }
+
+        specifier
     }
 
     fn class_specifier(&self, class: &Class) -> String {
@@ -145,31 +154,35 @@ impl Parser {
 
     fn visualize_labels(&self, result: &mut String) {
         for (id, label) in self.labels() {
-            let specifier = format!("{:?}", label)
-                .replace('\\', "\\\\")
-                .replace('"', "\\\"");
-
             result.push_str(&format!(
                 "    l{}[label=\"{} #{}\", shape=box];\n",
+                id.0, label, id.0
+            ));
+        }
+    }
+
+    fn visualize_expecteds(&self, result: &mut String) {
+        for (id, expected) in self.expecteds() {
+            let specifier = self.expected_specifier(expected);
+
+            result.push_str(&format!(
+                "    e{}[label=\"{} #{}\", shape=box];\n",
                 id.0, specifier, id.0
             ));
         }
     }
 
-    fn visualize_components(&self, result: &mut String) {
-        let components = self.separate_components();
+    fn expected_specifier(&self, expected: &Expected) -> String {
+        let mut parts = Vec::new();
 
-        for (i, (_, component)) in components.components.iter().enumerate() {
-            if component.instructions.len() < 2 {
-                continue;
-            }
-
-            result.push_str(&format!("    subgraph cluster_comp{} {{\n", i));
-            result.push_str("        style=dotted;\n");
-            for instruction in &component.instructions {
-                result.push_str(&format!("        i{};\n", instruction.0));
-            }
-            result.push_str("    }\n");
+        for label in expected.labels() {
+            parts.push(String::from(label));
         }
+
+        for series in expected.series() {
+            parts.push(self.series_specifier(series));
+        }
+
+        format!("[{}]", parts.join(", "))
     }
 }

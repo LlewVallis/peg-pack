@@ -1,62 +1,75 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
-use std::hash::Hasher;
+use std::hash::{Hash, Hasher};
 
 use seahash::SeaHasher;
 
 use crate::core::structure::{Component, ComponentId, Components};
 use crate::core::{Instruction, InstructionId, Parser};
+use crate::store::{Store, StoreKey};
 
 impl Parser {
     pub(super) fn deduplicate(&mut self) {
         self.deduplicate_series();
         self.deduplicate_labels();
+        self.deduplicate_expecteds();
         self.deduplicate_components();
         self.trim();
     }
 
-    /// Merge duplicate series into one
     fn deduplicate_series(&mut self) {
-        let mut canonicals = HashMap::new();
-        let mut mappings = HashMap::new();
-        let mut removals = Vec::new();
-
-        for (id, series) in self.series() {
-            if let Some(canonical_id) = canonicals.get(series) {
-                mappings.insert(id, *canonical_id);
-                removals.push(id);
-            } else {
-                canonicals.insert(series, id);
-                mappings.insert(id, id);
-            }
-        }
-
-        for (_, instruction) in self.instructions.iter_mut() {
-            if let Instruction::Series(id) = instruction {
-                *id = mappings[id];
-            }
-        }
+        self.deduplicate_resource(
+            |parser| &parser.series,
+            |instruction, mappings| {
+                if let Instruction::Series(id) = instruction {
+                    *id = mappings[id];
+                }
+            },
+        );
     }
 
-    /// Merge duplicate labels into one
     fn deduplicate_labels(&mut self) {
+        self.deduplicate_resource(
+            |parser| &parser.labels,
+            |instruction, mappings| {
+                if let Instruction::Label(_, id) = instruction {
+                    *id = mappings[id];
+                }
+            },
+        );
+    }
+
+    fn deduplicate_expecteds(&mut self) {
+        self.deduplicate_resource(
+            |parser| &parser.expecteds,
+            |instruction, mappings| {
+                if let Instruction::Error(_, id) = instruction {
+                    *id = mappings[id];
+                }
+            },
+        );
+    }
+
+    fn deduplicate_resource<K: StoreKey, V: Eq + Hash>(
+        &mut self,
+        resources: impl FnOnce(&Self) -> &Store<K, V>,
+        fix: impl Fn(&mut Instruction, &HashMap<K, K>),
+    ) {
         let mut canonicals = HashMap::new();
         let mut mappings = HashMap::new();
         let mut removals = Vec::new();
 
-        for (id, label) in self.labels() {
-            if let Some(canonical_id) = canonicals.get(label) {
+        for (id, resource) in resources(self).iter() {
+            if let Some(canonical_id) = canonicals.get(resource) {
                 mappings.insert(id, *canonical_id);
                 removals.push(id);
             } else {
-                canonicals.insert(label, id);
+                canonicals.insert(resource, id);
                 mappings.insert(id, id);
             }
         }
 
         for (_, instruction) in self.instructions.iter_mut() {
-            if let Instruction::Label(_, id) = instruction {
-                *id = mappings[id];
-            }
+            fix(instruction, &mappings);
         }
     }
 
@@ -234,7 +247,10 @@ impl Parser {
             Instruction::Seq(_, _) => hasher.write_u8(0),
             Instruction::Choice(_, _) => hasher.write_usize(1),
             Instruction::NotAhead(_) => hasher.write_u8(2),
-            Instruction::Error(_) => hasher.write_u8(3),
+            Instruction::Error(_, expected) => {
+                hasher.write_u8(3);
+                hasher.write_usize(expected.0);
+            }
             Instruction::Label(_, label) => {
                 hasher.write_u8(4);
                 hasher.write_usize(label.0);

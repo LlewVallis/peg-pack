@@ -13,7 +13,7 @@ use clap::Parser as CliParser;
 use regex::bytes::Regex;
 use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
 
-use crate::core::{Error, OptimizerSettings, Parser};
+use crate::core::{CompilerSettings, Error, Parser};
 
 /// A list of paths and contents to copy into the build directory
 const OUT_DIR_FILES: &[(&str, &[u8])] = &[
@@ -156,7 +156,7 @@ impl Context {
             }
         };
 
-        match Parser::load(&ir, OptimizerSettings::full()) {
+        match Parser::load(&ir, CompilerSettings::normal()) {
             Ok(parser) => parser,
             Err(Error::Load(message)) => self.exit_with_error(message),
             Err(Error::LeftRecursive(left_recursive)) => {

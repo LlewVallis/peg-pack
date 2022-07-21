@@ -10,8 +10,6 @@ const instructions = [];
 const instructionIds = new Map();
 class Instruction {}
 
-let errored = false;
-
 class FunctionRuleError extends Error {}
 
 const anonymousRules = new WeakSet();
@@ -39,12 +37,20 @@ function resolveInstruction(instruction) {
     } else if (instruction instanceof Function) {
         return resolveFunctionRule(instruction);
     } else if (typeof instruction === "string") {
-        let result = g.empty;
+        const codePoints = [];
 
         for (const codePoint of instruction) {
-            result = g.seq(result, g.oneOf(codePoint));
+            codePoints.push(codePoint);
         }
 
+        const ranges = codePoints.map(normalizeRange)
+
+        const classes = ranges.map(range => ({
+            negated: false,
+            ranges: [range],
+        }));
+
+        const result = createInstruction("series", { classes });
         const id = resolveInstruction(result);
         instructionIds.set(instruction, id);
         return id;
@@ -76,7 +82,6 @@ function resolveFunctionRule(rule) {
 
         result = resolveInstruction(rule());
     } catch (err) {
-        errored = true;
         rethrowFunctionRuleError(err);
     } finally {
         instructions[id] = buildInstruction("delegate", { target: result });
@@ -226,8 +231,8 @@ function recover(...syncs) {
 
         const result = () => this.strictChoice(
             rule,
-            g.seq(sync, this.error(this.empty)),
-            this.seq(this.error(this.any), result),
+            g.seq(sync, this.error(this.empty, rule)),
+            this.seq(this.error(this.any, rule), result),
         );
 
         anonymousRules.add(result);
@@ -250,9 +255,14 @@ function notAhead(...rules) {
     return createInstruction("notAhead", { target: instruction });
 }
 
-function error(rule) {
+function error(rule, expected) {
     const instruction = resolveInstruction(rule);
-    return createInstruction("error", { target: instruction });
+    const expectedInstruction = resolveInstruction(expected);
+
+    return createInstruction("error", {
+        target: instruction,
+        expected: expectedInstruction,
+    });
 }
 
 function label(label, rule) {

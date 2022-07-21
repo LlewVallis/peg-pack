@@ -4,6 +4,7 @@ use regex::Regex;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 
+use crate::core::expected::ExpectedId;
 use crate::core::series::{Class, Series};
 use crate::core::{Instruction, InstructionId, Parser};
 
@@ -75,9 +76,13 @@ impl Loader {
                 let target = self.load_reference(*target)?;
                 self.parser.insert(Instruction::NotAhead(target))
             }
-            InstructionIr::Error { target, .. } => {
+            InstructionIr::Error {
+                target, expected, ..
+            } => {
                 let target = self.load_reference(*target)?;
-                self.parser.insert(Instruction::Error(target))
+                let expected = self.load_reference(*expected)?;
+                self.parser
+                    .insert(Instruction::Error(target, ExpectedId(expected.0)))
             }
             InstructionIr::Label { target, label, .. } => {
                 let label = self.parser.insert_label(label.clone());
@@ -170,6 +175,7 @@ enum InstructionIr {
     #[serde(rename_all = "camelCase")]
     Error {
         target: usize,
+        expected: usize,
         rule_name: Option<String>,
     },
     #[serde(rename_all = "camelCase")]

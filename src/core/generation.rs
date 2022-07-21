@@ -164,7 +164,7 @@ impl Parser {
                 }
                 _ => unreachable!(),
             },
-            Instruction::Error(id) => match state.stage {
+            Instruction::Error(id, _) => match state.stage {
                 0 => {
                     self.generate_unary_continuing_dispatch(
                         &mut function,
@@ -339,7 +339,7 @@ impl Parser {
                 Instruction::Seq(_, _) => 3,
                 Instruction::Choice(_, _) => 3,
                 Instruction::NotAhead(_) => 2,
-                Instruction::Error(_) => 2,
+                Instruction::Error(_, _) => 2,
                 Instruction::Label(_, _) => 2,
                 Instruction::Delegate(_) => 1,
                 Instruction::Series(_) => 1,

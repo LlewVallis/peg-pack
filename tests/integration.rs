@@ -1,6 +1,6 @@
 extern crate core;
 
-use peg_pack::core::{OptimizerSettings, Parser};
+use peg_pack::core::{CompilerSettings, Parser};
 use serde::Deserialize;
 use serde_json::Value;
 use std::fs;
@@ -41,6 +41,7 @@ cases!(
     deduplicate_components,
     deduplicate_rotated_components,
     deduplicate_component_instructions,
+    infer_expected,
 );
 
 #[derive(Deserialize)]
@@ -53,20 +54,12 @@ struct Input {
 #[serde(rename_all = "camelCase")]
 struct InputSettings {
     #[serde(default = "return_true")]
-    remove_delegates: bool,
-    #[serde(default = "return_true")]
     merge_series: bool,
-    #[serde(default = "return_true")]
-    deduplicate: bool,
 }
 
 impl Default for InputSettings {
     fn default() -> Self {
-        Self {
-            remove_delegates: true,
-            merge_series: true,
-            deduplicate: true,
-        }
+        Self { merge_series: true }
     }
 }
 
@@ -77,10 +70,8 @@ fn return_true() -> bool {
 fn test(input: &[u8], expected: &[u8]) {
     let settings = serde_json::from_slice::<Input>(input).unwrap().settings;
 
-    let settings = OptimizerSettings {
-        remove_delegates: settings.remove_delegates,
+    let settings = CompilerSettings {
         merge_series: settings.merge_series,
-        deduplicate: settings.deduplicate,
     };
 
     let parser = Parser::load(input, settings).unwrap();

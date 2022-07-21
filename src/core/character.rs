@@ -18,7 +18,7 @@ impl Parser {
             Instruction::Seq(first, second) => self.characterize_seq(first, second, states),
             Instruction::Choice(first, second) => self.characterize_choice(first, second, states),
             Instruction::NotAhead(target) => self.characterize_not_ahead(target, states),
-            Instruction::Error(target)
+            Instruction::Error(target, _)
             | Instruction::Label(target, _)
             | Instruction::Delegate(target) => self.characterize_delegate_like(target, states),
             Instruction::Series(series) => self.characterize_series(series),

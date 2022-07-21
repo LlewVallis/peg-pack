@@ -1,11 +1,13 @@
 use std::collections::BTreeSet;
 
+use crate::core::expected::{Expected, ExpectedId};
 use serde::Serialize;
 
 use crate::core::series::{Series, SeriesId};
 use crate::store::{Store, StoreKey};
 
 mod character;
+mod expected;
 mod fixed_point;
 mod generation;
 mod graphvis;
@@ -22,10 +24,11 @@ pub struct Parser {
     instructions: Store<InstructionId, Instruction>,
     series: Store<SeriesId, Series>,
     labels: Store<LabelId, String>,
+    expecteds: Store<ExpectedId, Expected>,
 }
 
 impl Parser {
-    pub fn load(ir: &[u8], settings: OptimizerSettings) -> Result<Parser, Error> {
+    pub fn load(ir: &[u8], settings: CompilerSettings) -> Result<Parser, Error> {
         let (mut parser, rule_names) = match Self::load_ir(ir) {
             Ok(result) => result,
             Err(err) => return Err(Error::Load(err)),
@@ -59,6 +62,7 @@ impl Parser {
             instructions: &'a Store<InstructionId, Instruction>,
             series: &'a Store<SeriesId, Series>,
             labels: &'a Store<LabelId, String>,
+            expecteds: &'a Store<ExpectedId, Expected>,
         }
 
         let proxy = Proxy {
@@ -66,6 +70,7 @@ impl Parser {
             instructions: &self.instructions,
             series: &self.series,
             labels: &self.labels,
+            expecteds: &self.expecteds,
         };
 
         serde_json::to_string(&proxy).unwrap()
@@ -77,6 +82,7 @@ impl Parser {
             instructions: Store::new(),
             series: Store::new(),
             labels: Store::new(),
+            expecteds: Store::new(),
         }
     }
 
@@ -118,6 +124,10 @@ impl Parser {
         &self.labels[id]
     }
 
+    fn expecteds(&self) -> impl DoubleEndedIterator<Item = (ExpectedId, &Expected)> + '_ {
+        self.expecteds.iter()
+    }
+
     fn remap(&mut self, mut mapper: impl FnMut(InstructionId) -> InstructionId) {
         for (_, instruction) in self.instructions.iter_mut() {
             *instruction = instruction.remapped(&mut mapper);
@@ -128,19 +138,13 @@ impl Parser {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub struct OptimizerSettings {
-    pub remove_delegates: bool,
+pub struct CompilerSettings {
     pub merge_series: bool,
-    pub deduplicate: bool,
 }
 
-impl OptimizerSettings {
-    pub fn full() -> Self {
-        Self {
-            remove_delegates: true,
-            merge_series: true,
-            deduplicate: true,
-        }
+impl CompilerSettings {
+    pub fn normal() -> Self {
+        Self { merge_series: true }
     }
 }
 
@@ -176,7 +180,7 @@ enum Instruction {
     Seq(InstructionId, InstructionId),
     Choice(InstructionId, InstructionId),
     NotAhead(InstructionId),
-    Error(InstructionId),
+    Error(InstructionId, ExpectedId),
     Label(InstructionId, LabelId),
     Delegate(InstructionId),
     Series(SeriesId),
@@ -189,7 +193,7 @@ impl Instruction {
                 (Some(first), Some(second))
             }
             Instruction::NotAhead(target)
-            | Instruction::Error(target)
+            | Instruction::Error(target, _)
             | Instruction::Label(target, _)
             | Instruction::Delegate(target) => (Some(target), None),
             Instruction::Series(_) => (None, None),
@@ -205,7 +209,7 @@ impl Instruction {
                 Instruction::Choice(mapper(first), mapper(second))
             }
             Instruction::NotAhead(target) => Instruction::NotAhead(mapper(target)),
-            Instruction::Error(target) => Instruction::Error(mapper(target)),
+            Instruction::Error(target, expected) => Instruction::Error(mapper(target), expected),
             Instruction::Label(target, label) => Instruction::Label(mapper(target), label),
             Instruction::Delegate(target) => Instruction::Delegate(mapper(target)),
             Instruction::Series(_) => *self,

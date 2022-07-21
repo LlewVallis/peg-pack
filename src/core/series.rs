@@ -15,7 +15,7 @@ impl StoreKey for SeriesId {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Hash, Serialize)]
+#[derive(Debug, Eq, PartialEq, Hash, Serialize, Clone, Ord, PartialOrd)]
 #[serde(transparent)]
 pub struct Series {
     classes: Vec<Class>,
@@ -60,7 +60,7 @@ impl Series {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Hash, Serialize, Clone)]
+#[derive(Debug, Eq, PartialEq, Hash, Serialize, Clone, Ord, PartialOrd)]
 pub struct Class {
     negated: bool,
     ranges: Vec<(u8, u8)>,

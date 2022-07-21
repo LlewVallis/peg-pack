@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use crate::core::{Instruction, Parser};
+use crate::store::{Store, StoreKey};
 
 impl Parser {
     /// Remove all unreachable instructions, classes and labels
@@ -8,6 +9,7 @@ impl Parser {
         self.trim_instructions();
         self.trim_series();
         self.trim_labels();
+        self.trim_expecteds();
     }
 
     fn trim_instructions(&mut self) {
@@ -33,42 +35,58 @@ impl Parser {
     }
 
     fn trim_series(&mut self) {
-        let mut reachable = HashSet::new();
-
-        for (_, instruction) in self.instructions() {
-            if let Instruction::Series(series) = instruction {
-                reachable.insert(series);
-            }
-        }
-
-        let removals = self
-            .series()
-            .map(|(k, _)| k)
-            .filter(|id| !reachable.contains(id))
-            .collect::<Vec<_>>();
-
-        for removal in removals {
-            self.series.remove(removal);
-        }
+        self.trim_resource(
+            |parser| &mut parser.series,
+            |instruction| match instruction {
+                Instruction::Series(id) => Some(id),
+                _ => None,
+            },
+        );
     }
 
     fn trim_labels(&mut self) {
+        self.trim_resource(
+            |parser| &mut parser.labels,
+            |instruction| match instruction {
+                Instruction::Label(_, id) => Some(id),
+                _ => None,
+            },
+        );
+    }
+
+    fn trim_expecteds(&mut self) {
+        self.trim_resource(
+            |parser| &mut parser.expecteds,
+            |instruction| match instruction {
+                Instruction::Error(_, id) => Some(id),
+                _ => None,
+            },
+        );
+    }
+
+    fn trim_resource<K: StoreKey, V>(
+        &mut self,
+        store: impl FnOnce(&mut Self) -> &mut Store<K, V>,
+        extract: impl Fn(Instruction) -> Option<K>,
+    ) {
         let mut reachable = HashSet::new();
 
         for (_, instruction) in self.instructions() {
-            if let Instruction::Label(_, label) = instruction {
-                reachable.insert(label);
+            if let Some(id) = extract(instruction) {
+                reachable.insert(id);
             }
         }
 
-        let removals = self
-            .labels()
+        let store = store(self);
+
+        let removals = store
+            .iter()
             .map(|(k, _)| k)
             .filter(|id| !reachable.contains(id))
             .collect::<Vec<_>>();
 
         for removal in removals {
-            self.labels.remove(removal);
+            store.remove(removal);
         }
     }
 }
