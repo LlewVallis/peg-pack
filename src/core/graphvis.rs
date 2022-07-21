@@ -179,8 +179,15 @@ impl Parser {
             parts.push(String::from(label));
         }
 
-        for series in expected.series() {
-            parts.push(self.series_specifier(series));
+        for literal in expected.literals() {
+            let mut series = Series::empty();
+            for char in literal {
+                let mut class = Class::new(false);
+                class.insert(*char, *char);
+                series.append(class);
+            }
+
+            parts.push(self.series_specifier(&series));
         }
 
         format!("[{}]", parts.join(", "))

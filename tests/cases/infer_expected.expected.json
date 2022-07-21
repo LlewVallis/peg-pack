@@ -10,11 +10,8 @@
   "labels": [],
   "expecteds": [{
     "labels": ["foo"],
-    "series": [
-      [{
-        "negated": false,
-        "ranges": [[1, 1]]
-      }]
+    "literals": [
+      [1]
     ]
   }]
 }

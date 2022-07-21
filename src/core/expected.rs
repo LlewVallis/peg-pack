@@ -25,16 +25,53 @@ impl StoreKey for ExpectedId {
 #[derive(Debug, Eq, PartialEq, Hash, Serialize)]
 pub struct Expected {
     labels: BTreeSet<String>,
-    series: BTreeSet<Series>,
+    literals: BTreeSet<Vec<u8>>,
 }
 
 impl Expected {
+    fn append_series(&mut self, series: &Series) {
+        let literal = self.linear_series_prefix(series);
+        if !literal.is_empty() {
+            self.literals.insert(literal);
+            return;
+        }
+
+        if let Some(class) = series.classes().get(0) {
+            if !class.negated() {
+                for (lower, upper) in class.ranges() {
+                    for char in *lower..=*upper {
+                        self.literals.insert(vec![char]);
+                    }
+                }
+            }
+        }
+    }
+
+    fn linear_series_prefix(&self, series: &Series) -> Vec<u8> {
+        let mut buffer = Vec::new();
+
+        for class in series.classes() {
+            if class.negated() || class.ranges().len() != 1 {
+                return buffer;
+            }
+
+            let (lower, upper) = class.ranges()[0];
+            if lower != upper {
+                return buffer;
+            }
+
+            buffer.push(lower);
+        }
+
+        buffer
+    }
+
     pub fn labels(&self) -> impl Iterator<Item = &str> + '_ {
         self.labels.iter().map(|string| string.as_str())
     }
 
-    pub fn series(&self) -> impl Iterator<Item = &Series> + '_ {
-        self.series.iter()
+    pub fn literals(&self) -> impl Iterator<Item = &[u8]> + '_ {
+        self.literals.iter().map(|buffer| buffer.as_slice())
     }
 }
 
@@ -46,7 +83,7 @@ impl Parser {
     ) -> Expected {
         let mut result = Expected {
             labels: BTreeSet::new(),
-            series: BTreeSet::new(),
+            literals: BTreeSet::new(),
         };
 
         let mut visited = HashSet::new();
@@ -89,10 +126,8 @@ impl Parser {
                 result.labels.insert(label);
             }
             Instruction::Series(series) => {
-                let series = self.series[series].clone();
-                if !series.is_empty() && !series.is_never() {
-                    result.series.insert(series);
-                }
+                let series = &self.series[series];
+                result.append_series(series);
             }
             Instruction::NotAhead(_) => {}
         }

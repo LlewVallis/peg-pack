@@ -120,10 +120,6 @@ impl Parser {
         self.labels.iter().map(|(id, label)| (id, label.as_str()))
     }
 
-    fn unwrap_label(&self, id: LabelId) -> &str {
-        &self.labels[id]
-    }
-
     fn expecteds(&self) -> impl DoubleEndedIterator<Item = (ExpectedId, &Expected)> + '_ {
         self.expecteds.iter()
     }

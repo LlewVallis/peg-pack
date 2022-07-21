@@ -233,9 +233,9 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         self.push_state(TARGET);
     }
 
-    pub unsafe fn state_error_end(&mut self) {
+    pub unsafe fn state_error_end(&mut self, expected: G::Expected) {
         let result = self.take_result();
-        self.set_result(result.mark_error());
+        self.set_result(result.mark_error(expected));
         self.pop_state();
     }
 

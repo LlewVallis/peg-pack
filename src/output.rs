@@ -50,6 +50,17 @@ impl Codegen {
         Enum { codegen: self }
     }
 
+    pub fn trait_impl(&mut self, name: &str, target: &str) -> Trait {
+        self.write("impl ");
+        self.write(name);
+        self.write(" for ");
+        self.write(target);
+        self.space();
+        self.open_brace();
+
+        Trait { codegen: self }
+    }
+
     fn open_brace(&mut self) {
         self.indent();
         self.write("{");
@@ -181,6 +192,23 @@ impl<'a> Enum<'a> {
 }
 
 impl<'a> Drop for Enum<'a> {
+    fn drop(&mut self) {
+        self.codegen.close_brace();
+        self.codegen.newline();
+    }
+}
+
+pub struct Trait<'a> {
+    codegen: &'a mut Codegen,
+}
+
+impl<'a> Trait<'a> {
+    pub fn function(&mut self, signature: &str) -> Statements {
+        self.codegen.function(signature)
+    }
+}
+
+impl<'a> Drop for Trait<'a> {
     fn drop(&mut self) {
         self.codegen.close_brace();
         self.codegen.newline();

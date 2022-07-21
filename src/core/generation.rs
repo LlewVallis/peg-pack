@@ -43,6 +43,7 @@ impl Parser {
         codegen.newline();
 
         self.generate_labels(&mut codegen);
+        self.generate_expecteds(&mut codegen);
         self.generate_state_constants(&mut codegen);
         self.generate_state_functions(&mut codegen);
         self.generate_series_functions(&mut codegen);
@@ -54,7 +55,7 @@ impl Parser {
 
     fn generate_labels(&self, codegen: &mut Codegen) {
         codegen.line("#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]");
-        let mut enumeration = codegen.enumeration("Label");
+        let mut enumeration = codegen.enumeration("LabelImpl");
 
         let labels = self
             .labels()
@@ -64,6 +65,67 @@ impl Parser {
         for label in labels {
             let label = self.pascal_case(label);
             enumeration.variant(&label);
+        }
+
+        mem::drop(enumeration);
+
+        codegen.trait_impl("Label", "LabelImpl");
+    }
+
+    fn generate_expecteds(&self, codegen: &mut Codegen) {
+        codegen.line("#[derive(Copy, Clone, Eq, PartialEq, Hash)]");
+        let mut enumeration = codegen.enumeration("ExpectedImpl");
+
+        for (id, _) in self.expecteds() {
+            enumeration.variant(&format!("E{}", id.0));
+        }
+
+        mem::drop(enumeration);
+
+        let mut trait_impl = codegen.trait_impl("Expected<LabelImpl>", "ExpectedImpl");
+
+        {
+            let mut literals_function = trait_impl.function("fn literals(&self) -> &[&[u8]]");
+            self.generate_expected_literals(&mut literals_function);
+        }
+
+        {
+            let mut labels_function = trait_impl.function("fn labels(&self) -> &[LabelImpl]");
+            self.generate_expected_labels(&mut labels_function);
+        }
+    }
+
+    fn generate_expected_literals(&self, block: &mut Statements) {
+        let mut match_statement = block.match_statement("self");
+
+        for (id, expected) in self.expecteds() {
+            let case = format!("Self::E{}", id.0);
+
+            let literals = expected
+                .literals()
+                .map(|literal| format!("&{:?}", literal))
+                .collect::<Vec<_>>();
+
+            let line = format!("&[{}]", literals.join(", "));
+
+            match_statement.case_line(&case, &line);
+        }
+    }
+
+    fn generate_expected_labels(&self, block: &mut Statements) {
+        let mut match_statement = block.match_statement("self");
+
+        for (id, expected) in self.expecteds() {
+            let case = format!("Self::E{}", id.0);
+
+            let labels = expected
+                .labels()
+                .map(|label| format!("LabelImpl::{}", self.pascal_case(label)))
+                .collect::<Vec<_>>();
+
+            let line = format!("&[{}]", labels.join(", "));
+
+            match_statement.case_line(&case, &line);
         }
     }
 
@@ -164,7 +226,7 @@ impl Parser {
                 }
                 _ => unreachable!(),
             },
-            Instruction::Error(id, _) => match state.stage {
+            Instruction::Error(id, expected) => match state.stage {
                 0 => {
                     self.generate_unary_continuing_dispatch(
                         &mut function,
@@ -174,7 +236,10 @@ impl Parser {
                     );
                 }
                 1 => {
-                    function.line("ctx.state_error_end();");
+                    function.line(&format!(
+                        "ctx.state_error_end(ExpectedImpl::E{});",
+                        expected.0
+                    ));
                 }
                 _ => unreachable!(),
             },
@@ -188,9 +253,9 @@ impl Parser {
                     );
                 }
                 1 => {
-                    let label = self.unwrap_label(label);
+                    let label = &self.labels[label];
                     let label = self.pascal_case(label);
-                    function.line(&format!("ctx.state_label_end(Label::{});", label));
+                    function.line(&format!("ctx.state_label_end(LabelImpl::{});", label));
                 }
                 _ => unreachable!(),
             },

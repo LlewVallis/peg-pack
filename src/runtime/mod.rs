@@ -5,9 +5,9 @@ use std::fmt::{self, Debug, Formatter};
 
 use buffered_iter::BufferedIter;
 pub use context::Context;
-pub use grammar::Grammar;
+pub use grammar::*;
 pub use input::*;
-use result::{EnterExit, Label};
+use result::{EnterExit, Grouping};
 pub use result::{Match, ParseResult};
 
 mod buffered_iter;
@@ -20,13 +20,11 @@ pub struct GenParseMatch<G: Grammar>(pub Match<G>);
 
 impl<G: Grammar> GenParseMatch<G> {
     fn write_node(&self, f: &mut Formatter, node: &Match<G>) -> fmt::Result {
-        match node.label() {
-            Label::Custom(label) => write!(f, "{:?}", label)?,
-            Label::Error => write!(f, "Error")?,
-            Label::None => {}
+        match node.grouping() {
+            Grouping::Label(label) => write!(f, "{:?}[{}]", label, node.distance()),
+            Grouping::Error(expected) => write!(f, "{:?}[{}]", expected, node.distance()),
+            Grouping::None => Ok(())
         }
-
-        write!(f, "[{}]", node.distance())
     }
 
     fn next_is_enter<'b>(
@@ -56,8 +54,15 @@ impl<G: Grammar> GenParseMatch<G> {
         Ok(())
     }
 
-    fn delimit_pretty(&self, f: &mut Formatter, indent: usize) -> fmt::Result {
-        if indent != 0 {
+    fn delimit_pretty<'b>(
+        &self,
+        f: &mut Formatter,
+        iter: &mut BufferedIter<impl Iterator<Item = (&'b Match<G>, EnterExit)>>,
+    ) -> fmt::Result
+    where
+        G: 'b,
+    {
+        if iter.peek().is_some() {
             write!(f, ",")?;
         }
 
@@ -117,6 +122,7 @@ impl<G: Grammar> GenParseMatch<G> {
         G: 'b,
     {
         let mut indent = 0;
+        let mut start = true;
 
         if iter.peek().is_none() {
             return write!(f, "Match");
@@ -125,7 +131,9 @@ impl<G: Grammar> GenParseMatch<G> {
         while let Some((node, state)) = iter.next() {
             match state {
                 EnterExit::Enter => {
-                    if indent != 0 {
+                    if start {
+                        start = false;
+                    } else {
                         self.newline_indent(f, indent)?;
                     }
 
@@ -136,14 +144,14 @@ impl<G: Grammar> GenParseMatch<G> {
                         indent += 1;
                     } else {
                         iter.next();
-                        self.delimit_pretty(f, indent)?;
+                        self.delimit_pretty(f, iter)?;
                     }
                 }
                 EnterExit::Exit => {
                     indent -= 1;
                     self.newline_indent(f, indent)?;
                     write!(f, ")")?;
-                    self.delimit_pretty(f, indent)?;
+                    self.delimit_pretty(f, iter)?;
                 }
             }
         }
@@ -157,7 +165,7 @@ impl<G: Grammar> Debug for GenParseMatch<G> {
         let iter = self
             .0
             .walk()
-            .filter(|(node, _)| node.label() != Label::None);
+            .filter(|(node, _)| node.grouping() != Grouping::None);
 
         let mut iter = BufferedIter::new(iter);
 
@@ -176,10 +184,31 @@ const FINISH_STATE: State = 0;
 #[allow(unused)]
 macro_rules! generate {
     ($start:expr, $dispatch:ident) => {
+        impl std::fmt::Debug for ExpectedImpl {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                let mut tuple = f.debug_tuple("Error");
+
+                for label in self.labels() {
+                    tuple.field(label);
+                }
+
+                for literal in self.literals() {
+                    if let Ok(string) = std::str::from_utf8(literal) {
+                        tuple.field(&string);
+                    } else {
+                        tuple.field(literal);
+                    }
+                }
+
+                tuple.finish()
+            }
+        }
+
         struct Impl;
 
         impl Grammar for Impl {
-            type Label = Label;
+            type Label = LabelImpl;
+            type Expected = ExpectedImpl;
 
             fn start_state(&self) -> State {
                 $start

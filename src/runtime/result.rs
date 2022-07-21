@@ -3,7 +3,7 @@ use std::hash::Hash;
 use std::hint::unreachable_unchecked;
 use std::iter::FusedIterator;
 
-use super::Grammar;
+use super::grammar::{Expected, Grammar, Label};
 
 pub enum ParseResult<G: Grammar> {
     Matched(Match<G>),
@@ -64,11 +64,11 @@ impl<G: Grammar> ParseResult<G> {
         }
     }
 
-    pub fn mark_error(self) -> Self {
+    pub fn mark_error(self, expected: G::Expected) -> Self {
         match self {
             ParseResult::Matched(value) => {
                 let new_value = Match {
-                    label: Label::Error,
+                    grouping: Grouping::Error(expected),
                     scan_distance: value.scan_distance,
                     distance: value.distance,
                     error_distance: Some(0),
@@ -85,7 +85,7 @@ impl<G: Grammar> ParseResult<G> {
         match self {
             ParseResult::Matched(value) => {
                 let new_value = Match {
-                    label: Label::Custom(label),
+                    grouping: Grouping::Label(label),
                     scan_distance: value.scan_distance,
                     distance: value.distance,
                     error_distance: value.error_distance,
@@ -100,7 +100,7 @@ impl<G: Grammar> ParseResult<G> {
 }
 
 pub struct Match<G: Grammar> {
-    label: Label<G::Label>,
+    grouping: Grouping<G::Label, G::Expected>,
     scan_distance: usize,
     distance: usize,
     error_distance: Option<usize>,
@@ -116,7 +116,7 @@ impl<G: Grammar> Match<G> {
         Self {
             scan_distance,
             distance,
-            label: Label::None,
+            grouping: Grouping::None,
             error_distance: None,
             children: Vec::new(),
         }
@@ -134,7 +134,7 @@ impl<G: Grammar> Match<G> {
         });
 
         Self {
-            label: Label::None,
+            grouping: Grouping::None,
             scan_distance,
             distance,
             error_distance,
@@ -147,8 +147,8 @@ impl<G: Grammar> Match<G> {
         self
     }
 
-    pub fn label(&self) -> Label<G::Label> {
-        self.label
+    pub fn grouping(&self) -> Grouping<G::Label, G::Expected> {
+        self.grouping
     }
 
     pub fn scan_distance(&self) -> usize {
@@ -176,10 +176,10 @@ impl<G: Grammar> Match<G> {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub enum Label<T: Debug + Copy + Eq + Hash> {
+pub enum Grouping<L: Label, E: Expected<L>> {
     None,
-    Error,
-    Custom(T),
+    Label(L),
+    Error(E),
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
