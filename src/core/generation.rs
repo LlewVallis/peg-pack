@@ -7,18 +7,17 @@ use crate::output::{Codegen, Statements};
 
 #[derive(Copy, Clone)]
 struct State {
-    id: usize,
+    id: InstructionId,
     stage: usize,
-    instruction: Instruction,
 }
 
 impl State {
     pub fn const_name(&self) -> String {
-        format!("STATE_{}_{}", self.id, self.stage)
+        format!("STATE_{}_{}", self.id.0, self.stage)
     }
 
     pub fn function_name(&self) -> String {
-        format!("state_{}_{}", self.id, self.stage)
+        format!("state_{}_{}", self.id.0, self.stage)
     }
 }
 
@@ -34,16 +33,9 @@ impl Parser {
         codegen.line("use runtime::*;");
         codegen.newline();
 
-        codegen.line("/*");
-        for line in self.visualize().lines() {
-            codegen.line(&format!("{}", line));
-        }
-        codegen.line("*/");
-
-        codegen.newline();
-
         self.generate_labels(&mut codegen);
         self.generate_expecteds(&mut codegen);
+        self.generate_visualization_comment(&mut codegen);
         self.generate_state_constants(&mut codegen);
         self.generate_state_functions(&mut codegen);
         self.generate_series_functions(&mut codegen);
@@ -51,6 +43,15 @@ impl Parser {
         self.generate_macro(&mut codegen);
 
         codegen.finish()
+    }
+
+    fn generate_visualization_comment(&self, codegen: &mut Codegen) {
+        codegen.line("/*");
+        for line in self.visualize().lines() {
+            codegen.line(&format!("{}", line));
+        }
+        codegen.line("*/");
+        codegen.newline();
     }
 
     fn generate_labels(&self, codegen: &mut Codegen) {
@@ -69,8 +70,7 @@ impl Parser {
 
         mem::drop(enumeration);
 
-        codegen.line("impl Label for LabelImpl {}");
-        codegen.newline();
+        codegen.trait_impl("Label", "LabelImpl");
     }
 
     fn generate_expecteds(&self, codegen: &mut Codegen) {
@@ -111,6 +111,10 @@ impl Parser {
 
             match_statement.case_line(&case, &line);
         }
+
+        if self.expecteds().count() == 0 {
+            match_statement.case_line("_", "unsafe { std::hint::unreachable_unchecked() }");
+        }
     }
 
     fn generate_expected_labels(&self, block: &mut Statements) {
@@ -127,6 +131,10 @@ impl Parser {
             let line = format!("&[{}]", labels.join(", "));
 
             match_statement.case_line(&case, &line);
+        }
+
+        if self.expecteds().count() == 0 {
+            match_statement.case_line("_", "unsafe { std::hint::unreachable_unchecked() }");
         }
     }
 
@@ -148,6 +156,17 @@ impl Parser {
 
     fn generate_state_constants(&self, codegen: &mut Codegen) {
         for (i, state) in self.states().enumerate() {
+            let instruction = self.instructions[state.id];
+            let symbol = &self.debug_symbols[&state.id];
+
+            if symbol.names.is_empty() {
+                codegen.line(&format!("// Anonymous: {:?}", instruction));
+            } else {
+                let names = symbol.names.iter().cloned().collect::<Vec<_>>();
+
+                codegen.line(&format!("// Rule {}: {:?}", names.join(", "), instruction));
+            }
+
             codegen.line(&format!("const {}: State = {};", state.const_name(), i + 1));
         }
 
@@ -168,7 +187,7 @@ impl Parser {
         );
         let mut function = codegen.function(&function_signature);
 
-        match state.instruction {
+        match self.instructions[state.id] {
             Instruction::Seq(first, second) => match state.stage {
                 0 => {
                     self.generate_unary_continuing_dispatch(
@@ -279,7 +298,7 @@ impl Parser {
         target: InstructionId,
     ) {
         let target_name = format!("STATE_{}_0", target.0);
-        let continuation_name = format!("STATE_{}_{}", state.id, state.stage + 1);
+        let continuation_name = format!("STATE_{}_{}", state.id.0, state.stage + 1);
         block.line(&format!(
             "ctx.{}::<{}, {}>();",
             name, target_name, continuation_name
@@ -412,11 +431,7 @@ impl Parser {
             };
 
             for stage in 0..stages {
-                states.push(State {
-                    stage,
-                    instruction,
-                    id: id.0,
-                });
+                states.push(State { id, stage });
             }
         }
 

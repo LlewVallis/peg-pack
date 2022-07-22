@@ -15,12 +15,16 @@ impl Parser {
 
     fn sort_instructions(&mut self) {
         let mut new_instructions = Store::new();
+        let mut new_debug_symbols = HashMap::new();
         let mut instruction_mappings = HashMap::new();
 
         let walk = self.walk().collect::<Vec<_>>();
         for (id, instruction) in walk {
             let new_id = new_instructions.insert(instruction);
             instruction_mappings.insert(id, new_id);
+
+            let name = self.debug_symbols[&id].clone();
+            new_debug_symbols.insert(new_id, name);
         }
 
         for (_, instruction) in new_instructions.iter_mut() {
@@ -29,6 +33,7 @@ impl Parser {
 
         self.start = instruction_mappings[&self.start];
         self.instructions = new_instructions;
+        self.debug_symbols = new_debug_symbols;
     }
 
     fn sort_series(&mut self) {

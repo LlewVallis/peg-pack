@@ -1,5 +1,5 @@
 use crate::core::series::Series;
-use crate::core::{Instruction, InstructionId, Parser};
+use crate::core::{DebugSymbol, Instruction, InstructionId, Parser};
 use std::collections::HashMap;
 
 impl Parser {
@@ -41,8 +41,12 @@ impl Parser {
 
         let merged = Series::merge(first, second);
 
+        let first_symbol = &self.debug_symbols[&first_id];
+        let second_symbol = &self.debug_symbols[&second_id];
+        let symbol = DebugSymbol::merge(first_symbol, second_symbol);
+
         let series = self.insert_series(merged);
-        let new_id = self.insert(Instruction::Series(series));
+        let new_id = self.insert(Instruction::Series(series), symbol);
 
         mappings.insert(id, new_id);
     }

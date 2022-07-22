@@ -30,7 +30,18 @@ impl Parser {
             .collect::<Vec<_>>();
 
         for removal in removals {
-            self.instructions.remove(removal);
+            assert!(self.instructions.remove(removal).is_some());
+        }
+
+        let symbol_removals = self
+            .debug_symbols
+            .keys()
+            .copied()
+            .filter(|id| !reachable.contains(id))
+            .collect::<Vec<_>>();
+
+        for removal in symbol_removals {
+            assert!(self.debug_symbols.remove(&removal).is_some());
         }
     }
 

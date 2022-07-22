@@ -1,4 +1,5 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
+use std::rc::Rc;
 
 use crate::core::expected::{Expected, ExpectedId};
 use serde::Serialize;
@@ -25,11 +26,12 @@ pub struct Parser {
     series: Store<SeriesId, Series>,
     labels: Store<LabelId, String>,
     expecteds: Store<ExpectedId, Expected>,
+    debug_symbols: HashMap<InstructionId, DebugSymbol>,
 }
 
 impl Parser {
     pub fn load(ir: &[u8], settings: CompilerSettings) -> Result<Parser, Error> {
-        let (mut parser, rule_names) = match Self::load_ir(ir) {
+        let mut parser = match Self::load_ir(ir) {
             Ok(result) => result,
             Err(err) => return Err(Error::Load(err)),
         };
@@ -42,7 +44,10 @@ impl Parser {
             for error in errors {
                 match error {
                     ValidationError::LeftRecursion(id) => {
-                        left_recursive.insert(rule_names[&id].clone());
+                        let symbol = parser.debug_symbols[&id].clone();
+                        for name in symbol.names.iter() {
+                            left_recursive.insert(name.clone());
+                        }
                     }
                 }
             }
@@ -83,12 +88,14 @@ impl Parser {
             series: Store::new(),
             labels: Store::new(),
             expecteds: Store::new(),
+            debug_symbols: HashMap::new(),
         }
     }
 
-    fn insert(&mut self, instruction: Instruction) -> InstructionId {
+    fn insert(&mut self, instruction: Instruction, symbol: DebugSymbol) -> InstructionId {
         let id = self.instructions.reserve();
         self.instructions.set(id, instruction);
+        self.debug_symbols.insert(id, symbol);
         id
     }
 
@@ -125,6 +132,16 @@ impl Parser {
     }
 
     fn remap(&mut self, mut mapper: impl FnMut(InstructionId) -> InstructionId) {
+        for (id, _) in self.instructions.iter() {
+            let new_id = mapper(id);
+
+            let source_symbol = &self.debug_symbols[&id];
+            let dest_symbol = &self.debug_symbols[&new_id];
+            let new_symbol = DebugSymbol::merge(source_symbol, dest_symbol);
+
+            self.debug_symbols.insert(new_id, new_symbol);
+        }
+
         for (_, instruction) in self.instructions.iter_mut() {
             *instruction = instruction.remapped(&mut mapper);
         }
@@ -209,6 +226,63 @@ impl Instruction {
             Instruction::Label(target, label) => Instruction::Label(mapper(target), label),
             Instruction::Delegate(target) => Instruction::Delegate(mapper(target)),
             Instruction::Series(_) => *self,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+struct DebugSymbol {
+    names: Rc<BTreeSet<String>>,
+}
+
+impl DebugSymbol {
+    pub fn named(name: String) -> Self {
+        Self {
+            names: Rc::new(BTreeSet::from([name]))
+        }
+    }
+
+    pub fn anonymous() -> Self {
+        Self {
+            names: Rc::new(BTreeSet::new())
+        }
+    }
+
+    pub fn merge_many<'a>(values: impl IntoIterator<Item = &'a DebugSymbol>) -> Self {
+        let mut values = values.into_iter().collect::<Vec<_>>();
+
+        if values.is_empty() {
+            return DebugSymbol::anonymous();
+        }
+
+        let mut result = values.pop().unwrap().clone();
+
+        while let Some(other) = values.pop() {
+            result = Self::merge(&result, other);
+        }
+
+        result
+    }
+
+    pub fn merge(first: &DebugSymbol, second: &DebugSymbol) -> Self {
+        if first.names == second.names {
+            return first.clone();
+        }
+
+        if first.names.is_empty() {
+            return second.clone();
+        }
+
+        if second.names.is_empty() {
+            return first.clone();
+        }
+
+        let mut new_names = BTreeSet::new();
+        new_names.extend(first.names.iter().cloned());
+        new_names.extend(second.names.iter().cloned());
+
+        Self {
+            names: Rc::new(new_names)
         }
     }
 }

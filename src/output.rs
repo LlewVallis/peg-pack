@@ -58,7 +58,10 @@ impl Codegen {
         self.space();
         self.open_brace();
 
-        Trait { codegen: self, first: false }
+        Trait {
+            codegen: self,
+            first: false,
+        }
     }
 
     fn open_brace(&mut self) {

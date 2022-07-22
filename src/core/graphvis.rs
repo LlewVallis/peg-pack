@@ -2,15 +2,14 @@ use crate::core::character::Character;
 use crate::core::expected::Expected;
 use crate::core::series::{Class, Series};
 use crate::core::{Instruction, Parser};
+use std::collections::{HashMap, HashSet};
 
 impl Parser {
     pub fn visualize(&self) -> String {
         let mut result = String::from("digraph {\n");
 
         self.visualize_instructions(&mut result);
-        self.visualize_series(&mut result);
-        self.visualize_labels(&mut result);
-        self.visualize_expecteds(&mut result);
+        self.visualize_debug_symbols(&mut result);
 
         result.push_str("}");
         result
@@ -22,8 +21,9 @@ impl Parser {
         for (id, instruction) in self.instructions() {
             let character = characters[&id];
             let name = self.instruction_name(instruction, character);
+            let shape = self.instruction_shape(instruction);
 
-            let header = format!("    i{}[label=\"{} #{}\"];\n", id.0, name, id.0);
+            let header = format!("    i{}[shape={}, label=\"{} #{}\"];\n", id.0, shape, name, id.0);
             result.push_str(&header);
 
             match instruction {
@@ -31,38 +31,50 @@ impl Parser {
                     result.push_str(&format!("    i{}:w -> i{};\n", id.0, first.0));
                     result.push_str(&format!("    i{}:e -> i{};\n", id.0, second.0));
                 }
-                Instruction::NotAhead(target) | Instruction::Delegate(target) => {
+                Instruction::NotAhead(target)
+                | Instruction::Delegate(target)
+                | Instruction::Label(target, _)
+                | Instruction::Error(target, _) => {
                     result.push_str(&format!("    i{} -> i{};\n", id.0, target.0));
                 }
-                Instruction::Label(target, label) => {
-                    result.push_str(&format!("    i{} -> i{};\n", id.0, target.0));
-                    result.push_str(&format!("    i{} -> l{};\n", id.0, label.0));
-                }
-                Instruction::Error(target, expected) => {
-                    result.push_str(&format!("    i{} -> i{};\n", id.0, target.0));
-                    result.push_str(&format!("    i{} -> e{};\n", id.0, expected.0));
-                }
-                Instruction::Series(class) => {
-                    result.push_str(&format!("    i{} -> s{};\n", id.0, class.0));
-                }
+                Instruction::Series(_) => {}
             };
         }
 
         result.push_str(&format!("    i{}[peripheries=2];\n", self.start.0));
     }
 
-    fn instruction_name(&self, instruction: Instruction, character: Character) -> String {
-        let name = match instruction {
-            Instruction::Seq(_, _) => "Sequence",
-            Instruction::Choice(_, _) => "Choice",
-            Instruction::NotAhead(_) => "Not ahead",
-            Instruction::Error(_, _) => "Error",
-            Instruction::Delegate(_) => "Delegate",
-            Instruction::Label(_, _) => "Label",
-            Instruction::Series(_) => "Series",
-        };
+    fn instruction_shape(&self, instruction: Instruction) -> &str {
+        match instruction {
+            Instruction::Seq(_, _) |
+            Instruction::Choice(_, _) |
+            Instruction::NotAhead(_) |
+            Instruction::Error(_, _) |
+            Instruction::Label(_, _) |
+            Instruction::Delegate(_) => "oval",
+            Instruction::Series(_) => "box",
+        }
+    }
 
-        let mut name = String::from(name);
+    fn instruction_name(&self, instruction: Instruction, character: Character) -> String {
+        let mut name = match instruction {
+            Instruction::Seq(_, _) => String::from("Sequence"),
+            Instruction::Choice(_, _) => String::from("Choice"),
+            Instruction::NotAhead(_) => String::from("Not ahead"),
+            Instruction::Error(_, expected) => {
+                let expected = &self.expecteds[expected];
+                format!("Error[{}]", self.expected_specifier(expected))
+            }
+            Instruction::Delegate(_) => String::from("Delegate"),
+            Instruction::Label(_, label) => {
+                let label = &self.labels[label];
+                format!("Label[{}]", label)
+            }
+            Instruction::Series(series) => {
+                let series = &self.series[series];
+                format!("Series[{}]", self.series_specifier(series))
+            }
+        };
 
         if character.antitransparent {
             name.push_str(" (AT)");
@@ -77,17 +89,6 @@ impl Parser {
         }
 
         name
-    }
-
-    fn visualize_series(&self, result: &mut String) {
-        for (id, series) in self.series() {
-            let specifier = self.series_specifier(series);
-
-            result.push_str(&format!(
-                "    s{}[label=\"[{}] #{}\", shape=box];\n",
-                id.0, specifier, id.0
-            ));
-        }
     }
 
     fn series_specifier(&self, series: &Series) -> String {
@@ -152,26 +153,6 @@ impl Parser {
         }
     }
 
-    fn visualize_labels(&self, result: &mut String) {
-        for (id, label) in self.labels() {
-            result.push_str(&format!(
-                "    l{}[label=\"{} #{}\", shape=box];\n",
-                id.0, label, id.0
-            ));
-        }
-    }
-
-    fn visualize_expecteds(&self, result: &mut String) {
-        for (id, expected) in self.expecteds() {
-            let specifier = self.expected_specifier(expected);
-
-            result.push_str(&format!(
-                "    e{}[label=\"{} #{}\", shape=box];\n",
-                id.0, specifier, id.0
-            ));
-        }
-    }
-
     fn expected_specifier(&self, expected: &Expected) -> String {
         let mut parts = Vec::new();
 
@@ -191,5 +172,34 @@ impl Parser {
         }
 
         format!("[{}]", parts.join(", "))
+    }
+
+    fn visualize_debug_symbols(&self, result: &mut String) {
+        let mut groups = HashMap::<_, HashSet<_>>::new();
+
+        for (instruction, symbol) in &self.debug_symbols {
+            if let Some(set) = groups.get_mut(symbol) {
+                set.insert(*instruction);
+            } else {
+                groups.insert(symbol.clone(), HashSet::from([*instruction]));
+            }
+        }
+
+        for (i, (symbol, instructions)) in groups.into_iter().enumerate() {
+            let names = if symbol.names.is_empty() {
+                String::from("<anonymous>")
+            } else {
+                symbol.names.iter().cloned().collect::<Vec<_>>().join(", ")
+            };
+
+            result.push_str(&format!("    subgraph cluster_{} {{\n", i));
+            result.push_str(&format!("        label=\"{}\";\n", names));
+
+            for instruction in instructions {
+                result.push_str(&format!("        i{};\n", instruction.0));
+            }
+
+            result.push_str("    }\n");
+        }
     }
 }

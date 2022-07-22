@@ -1,19 +1,17 @@
-use std::collections::HashMap;
-
 use regex::Regex;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 
 use crate::core::expected::ExpectedId;
 use crate::core::series::{Class, Series};
-use crate::core::{Instruction, InstructionId, Parser};
+use crate::core::{DebugSymbol, Instruction, InstructionId, Parser};
 
 /// Required IR file version
 const VERSION: u32 = 0;
 
 impl Parser {
     /// Load some IR into a parser and rule name map, or fail with an error message
-    pub(super) fn load_ir(bytes: &[u8]) -> Result<(Self, HashMap<InstructionId, String>), String> {
+    pub(super) fn load_ir(bytes: &[u8]) -> Result<Self, String> {
         let ir = match serde_json::from_slice::<Ir>(bytes) {
             Ok(ir) => ir,
             Err(err) => return Err(format!("Malformed internal representation ({})", err)),
@@ -21,19 +19,17 @@ impl Parser {
 
         let mut loader = Loader {
             parser: Parser::new(),
-            rule_names: HashMap::new(),
             instruction_count: 0,
         };
 
         loader.load_ir(ir)?;
 
-        Ok((loader.parser, loader.rule_names))
+        Ok(loader.parser)
     }
 }
 
 struct Loader {
     parser: Parser,
-    rule_names: HashMap<InstructionId, String>,
     instruction_count: usize,
 }
 
@@ -61,37 +57,57 @@ impl Loader {
     }
 
     fn load_instruction(&mut self, ir: InstructionIr) -> Result<(), String> {
-        let id = match &ir {
+        let rule_name = match &ir {
+            InstructionIr::Seq { rule_name, .. }
+            | InstructionIr::Choice { rule_name, .. }
+            | InstructionIr::NotAhead { rule_name, .. }
+            | InstructionIr::Error { rule_name, .. }
+            | InstructionIr::Label { rule_name, .. }
+            | InstructionIr::Delegate { rule_name, .. }
+            | InstructionIr::Series { rule_name, .. } => rule_name,
+        };
+
+        let symbol = match rule_name {
+            Some(name) => DebugSymbol::named(name.clone()),
+            None => DebugSymbol::anonymous(),
+        };
+
+        match &ir {
             InstructionIr::Seq { first, second, .. } => {
                 let first = self.load_reference(*first)?;
                 let second = self.load_reference(*second)?;
-                self.parser.insert(Instruction::Seq(first, second))
+                self.parser
+                    .insert(Instruction::Seq(first, second), symbol);
             }
             InstructionIr::Choice { first, second, .. } => {
                 let first = self.load_reference(*first)?;
                 let second = self.load_reference(*second)?;
-                self.parser.insert(Instruction::Choice(first, second))
+                self.parser
+                    .insert(Instruction::Choice(first, second), symbol);
             }
             InstructionIr::NotAhead { target, .. } => {
                 let target = self.load_reference(*target)?;
-                self.parser.insert(Instruction::NotAhead(target))
+                self.parser.insert(Instruction::NotAhead(target), symbol);
             }
             InstructionIr::Error {
                 target, expected, ..
             } => {
                 let target = self.load_reference(*target)?;
                 let expected = self.load_reference(*expected)?;
-                self.parser
-                    .insert(Instruction::Error(target, ExpectedId(expected.0)))
+                self.parser.insert(
+                    Instruction::Error(target, ExpectedId(expected.0)),
+                    symbol,
+                );
             }
             InstructionIr::Label { target, label, .. } => {
                 let label = self.parser.insert_label(label.clone());
                 let target = self.load_reference(*target)?;
-                self.parser.insert(Instruction::Label(target, label))
+                self.parser
+                    .insert(Instruction::Label(target, label), symbol);
             }
             InstructionIr::Delegate { target, .. } => {
                 let target = self.load_reference(*target)?;
-                self.parser.insert(Instruction::Delegate(target))
+                self.parser.insert(Instruction::Delegate(target), symbol);
             }
             InstructionIr::Series { classes, .. } => {
                 let mut series = Series::empty();
@@ -107,20 +123,7 @@ impl Loader {
                 }
 
                 let series = self.parser.insert_series(series);
-                self.parser.insert(Instruction::Series(series))
-            }
-        };
-
-        match ir {
-            InstructionIr::Seq { rule_name, .. }
-            | InstructionIr::Choice { rule_name, .. }
-            | InstructionIr::NotAhead { rule_name, .. }
-            | InstructionIr::Error { rule_name, .. }
-            | InstructionIr::Label { rule_name, .. }
-            | InstructionIr::Delegate { rule_name, .. }
-            | InstructionIr::Series { rule_name, .. } => {
-                let name = rule_name.unwrap_or_else(|| String::from("<anonymous>"));
-                self.rule_names.insert(id, name);
+                self.parser.insert(Instruction::Series(series), symbol);
             }
         }
 

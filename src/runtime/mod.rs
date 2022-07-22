@@ -23,7 +23,7 @@ impl<G: Grammar> GenParseMatch<G> {
         match node.grouping() {
             Grouping::Label(label) => write!(f, "{:?}[{}]", label, node.distance()),
             Grouping::Error(expected) => write!(f, "{:?}[{}]", expected, node.distance()),
-            Grouping::None => Ok(())
+            Grouping::None => Ok(()),
         }
     }
 
