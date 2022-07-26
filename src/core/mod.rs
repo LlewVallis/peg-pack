@@ -238,13 +238,13 @@ struct DebugSymbol {
 impl DebugSymbol {
     pub fn named(name: String) -> Self {
         Self {
-            names: Rc::new(BTreeSet::from([name]))
+            names: Rc::new(BTreeSet::from([name])),
         }
     }
 
     pub fn anonymous() -> Self {
         Self {
-            names: Rc::new(BTreeSet::new())
+            names: Rc::new(BTreeSet::new()),
         }
     }
 
@@ -282,7 +282,7 @@ impl DebugSymbol {
         new_names.extend(second.names.iter().cloned());
 
         Self {
-            names: Rc::new(new_names)
+            names: Rc::new(new_names),
         }
     }
 }

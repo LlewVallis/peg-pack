@@ -10,11 +10,14 @@ pub use input::*;
 use result::{EnterExit, Grouping};
 pub use result::{Match, ParseResult};
 
+mod array_vec;
 mod buffered_iter;
 mod context;
 mod grammar;
 mod input;
+mod refc;
 mod result;
+mod stack;
 
 pub struct GenParseMatch<G: Grammar>(pub Match<G>);
 

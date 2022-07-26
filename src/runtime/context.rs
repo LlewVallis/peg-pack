@@ -5,6 +5,7 @@ use super::grammar::Grammar;
 use super::input::Input;
 use super::result::Match;
 use super::result::ParseResult;
+use super::stack::Stack;
 use super::{State, FINISH_STATE};
 
 pub struct Context<'a, I: Input + ?Sized, G: Grammar> {
@@ -79,40 +80,6 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
     unsafe fn take_result(&mut self) -> ParseResult<G> {
         let top = self.result_stack.top_mut();
         mem::replace(top, MaybeUninit::uninit()).assume_init()
-    }
-}
-
-struct Stack<T> {
-    top: T,
-    elements: Vec<T>,
-}
-
-impl<T> Stack<T> {
-    fn of(value: T) -> Self {
-        Self {
-            top: value,
-            elements: Vec::new(),
-        }
-    }
-
-    unsafe fn top(&self) -> &T {
-        &self.top
-    }
-
-    unsafe fn top_mut(&mut self) -> &mut T {
-        &mut self.top
-    }
-
-    fn push(&mut self, value: T) {
-        unsafe {
-            let old_top = mem::replace(self.top_mut(), value);
-            self.elements.push(old_top);
-        }
-    }
-
-    unsafe fn pop(&mut self) -> T {
-        let next = self.elements.pop().unwrap_unchecked();
-        mem::replace(self.top_mut(), next)
     }
 }
 

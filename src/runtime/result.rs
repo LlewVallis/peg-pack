@@ -2,8 +2,11 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::hint::unreachable_unchecked;
 use std::iter::FusedIterator;
+use std::ops::Deref;
 
+use super::array_vec::ArrayVec;
 use super::grammar::{Expected, Grammar, Label};
+use super::refc::Refc;
 
 pub enum ParseResult<G: Grammar> {
     Matched(Match<G>),
@@ -67,12 +70,25 @@ impl<G: Grammar> ParseResult<G> {
     pub fn mark_error(self, expected: G::Expected) -> Self {
         match self {
             ParseResult::Matched(value) => {
-                let new_value = Match {
-                    grouping: Grouping::Error(expected),
-                    scan_distance: value.scan_distance,
-                    distance: value.distance,
-                    error_distance: Some(0),
-                    children: vec![value],
+                let replace =
+                    value.grouping.is_none() || value.grouping == Grouping::Error(expected);
+
+                let new_value = if replace {
+                    Match {
+                        grouping: Grouping::Error(expected),
+                        scan_distance: value.scan_distance,
+                        distance: value.distance,
+                        error_distance: value.error_distance,
+                        children: value.children,
+                    }
+                } else {
+                    Match {
+                        grouping: Grouping::Error(expected),
+                        scan_distance: value.scan_distance,
+                        distance: value.distance,
+                        error_distance: value.error_distance,
+                        children: ArrayVec::of([Refc::new(value)]),
+                    }
                 };
 
                 ParseResult::Matched(new_value)
@@ -84,12 +100,22 @@ impl<G: Grammar> ParseResult<G> {
     pub fn label(self, label: G::Label) -> Self {
         match self {
             ParseResult::Matched(value) => {
-                let new_value = Match {
-                    grouping: Grouping::Label(label),
-                    scan_distance: value.scan_distance,
-                    distance: value.distance,
-                    error_distance: value.error_distance,
-                    children: vec![value],
+                let new_value = if value.grouping.is_none() {
+                    Match {
+                        grouping: Grouping::Label(label),
+                        scan_distance: value.scan_distance,
+                        distance: value.distance,
+                        error_distance: value.error_distance,
+                        children: value.children,
+                    }
+                } else {
+                    Match {
+                        grouping: Grouping::Label(label),
+                        scan_distance: value.scan_distance,
+                        distance: value.distance,
+                        error_distance: value.error_distance,
+                        children: ArrayVec::of([Refc::new(value)]),
+                    }
                 };
 
                 ParseResult::Matched(new_value)
@@ -99,12 +125,14 @@ impl<G: Grammar> ParseResult<G> {
     }
 }
 
+const MATCH_CHILDREN: usize = 4;
+
 pub struct Match<G: Grammar> {
     grouping: Grouping<G::Label, G::Expected>,
     scan_distance: usize,
     distance: usize,
     error_distance: Option<usize>,
-    children: Vec<Self>,
+    children: ArrayVec<Refc<Self>, MATCH_CHILDREN>,
 }
 
 impl<G: Grammar> Match<G> {
@@ -118,7 +146,7 @@ impl<G: Grammar> Match<G> {
             distance,
             grouping: Grouping::None,
             error_distance: None,
-            children: Vec::new(),
+            children: ArrayVec::new(),
         }
     }
 
@@ -133,13 +161,57 @@ impl<G: Grammar> Match<G> {
                 .map(|distance| first.distance + distance)
         });
 
+        let first_grouping = first.grouping;
+        let second_grouping = second.grouping;
+
+        let concatenation_would_overflow =
+            (first.children.len() + second.children.len()) > MATCH_CHILDREN;
+        let both_have_no_label = first_grouping.is_none() && second_grouping.is_none();
+        let can_concatenate = both_have_no_label && !concatenation_would_overflow;
+
+        if can_concatenate {
+            let children = unsafe { ArrayVec::concat_unchecked(first.children, second.children) };
+
+            return Self {
+                grouping: first.grouping,
+                scan_distance,
+                distance,
+                error_distance,
+                children,
+            };
+        }
+
+        if first.is_insignificant() {
+            return Self {
+                grouping: second.grouping,
+                scan_distance,
+                distance,
+                error_distance,
+                children: second.children,
+            };
+        }
+
+        if second.is_insignificant() {
+            return Self {
+                grouping: first.grouping,
+                scan_distance,
+                distance,
+                error_distance,
+                children: first.children,
+            };
+        }
+
         Self {
             grouping: Grouping::None,
             scan_distance,
             distance,
             error_distance,
-            children: vec![first, second],
+            children: ArrayVec::of([Refc::new(first), Refc::new(second)]),
         }
+    }
+
+    fn is_insignificant(&self) -> bool {
+        self.distance == 0 && self.grouping.is_none() && self.children.is_empty()
     }
 
     pub fn extend_scan_distance(mut self, amount: usize) -> Self {
@@ -182,6 +254,15 @@ pub enum Grouping<L: Label, E: Expected<L>> {
     Error(E),
 }
 
+impl<L: Label, E: Expected<L>> Grouping<L, E> {
+    fn is_none(&self) -> bool {
+        match self {
+            Grouping::None => true,
+            Grouping::Label(_) | Grouping::Error(_) => false,
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum EnterExit {
     Enter,
@@ -206,16 +287,17 @@ impl<'a, G: Grammar> Iterator for Walk<'a, G> {
 
         let (node, child_index) = self.parents.last_mut()?;
         let node = *node;
-        let index = *child_index;
 
-        if node.children.len() == index {
+        if node.children.len() == *child_index {
             self.parents.pop();
             return Some((node, EnterExit::Exit));
         }
 
+        let child = unsafe { node.children.get_unchecked(*child_index).deref() };
         *child_index += 1;
-        self.parents.push((&node.children[index], 0));
-        Some((&node.children[index], EnterExit::Enter))
+
+        self.parents.push((child, 0));
+        Some((child, EnterExit::Enter))
     }
 }
 

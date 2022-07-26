@@ -1,9 +1,10 @@
-use std::collections::HashSet;
 use crate::core::{DebugSymbol, Parser};
+use std::collections::HashSet;
 
 impl Parser {
     pub(super) fn infer_debug_symbols(&mut self) {
-        let candidates = self.walk()
+        let candidates = self
+            .walk()
             .map(|(k, _)| k)
             .filter(|id| self.debug_symbols[id].names.is_empty())
             .collect::<HashSet<_>>();
@@ -13,8 +14,7 @@ impl Parser {
         let predecessors = self.compute_predecessors();
 
         while let Some(id) = queue.pop() {
-            let predecessor_symbols = predecessors[&id].iter()
-                .map(|id| &self.debug_symbols[id]);
+            let predecessor_symbols = predecessors[&id].iter().map(|id| &self.debug_symbols[id]);
 
             let new_symbol = DebugSymbol::merge_many(predecessor_symbols);
             let new_symbol = DebugSymbol::merge(&new_symbol, &self.debug_symbols[&id]);

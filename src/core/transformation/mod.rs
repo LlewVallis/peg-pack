@@ -3,13 +3,13 @@ use std::collections::HashMap;
 use crate::core::Parser;
 use crate::core::{CompilerSettings, InstructionId};
 
+mod debug_symbol_inference;
 mod deduplication;
 mod delegate_elimination;
 mod expected_inference;
 mod merge_series;
 mod sort;
 mod trim;
-mod debug_symbol_inference;
 
 impl Parser {
     /// Transform and optimize the parser, cannot be run on an ill-formed grammar

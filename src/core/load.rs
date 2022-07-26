@@ -76,8 +76,7 @@ impl Loader {
             InstructionIr::Seq { first, second, .. } => {
                 let first = self.load_reference(*first)?;
                 let second = self.load_reference(*second)?;
-                self.parser
-                    .insert(Instruction::Seq(first, second), symbol);
+                self.parser.insert(Instruction::Seq(first, second), symbol);
             }
             InstructionIr::Choice { first, second, .. } => {
                 let first = self.load_reference(*first)?;
@@ -94,10 +93,8 @@ impl Loader {
             } => {
                 let target = self.load_reference(*target)?;
                 let expected = self.load_reference(*expected)?;
-                self.parser.insert(
-                    Instruction::Error(target, ExpectedId(expected.0)),
-                    symbol,
-                );
+                self.parser
+                    .insert(Instruction::Error(target, ExpectedId(expected.0)), symbol);
             }
             InstructionIr::Label { target, label, .. } => {
                 let label = self.parser.insert_label(label.clone());

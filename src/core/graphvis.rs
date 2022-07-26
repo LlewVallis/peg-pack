@@ -23,7 +23,10 @@ impl Parser {
             let name = self.instruction_name(instruction, character);
             let shape = self.instruction_shape(instruction);
 
-            let header = format!("    i{}[shape={}, label=\"{} #{}\"];\n", id.0, shape, name, id.0);
+            let header = format!(
+                "    i{}[shape={}, label=\"{} #{}\"];\n",
+                id.0, shape, name, id.0
+            );
             result.push_str(&header);
 
             match instruction {
@@ -46,12 +49,12 @@ impl Parser {
 
     fn instruction_shape(&self, instruction: Instruction) -> &str {
         match instruction {
-            Instruction::Seq(_, _) |
-            Instruction::Choice(_, _) |
-            Instruction::NotAhead(_) |
-            Instruction::Error(_, _) |
-            Instruction::Label(_, _) |
-            Instruction::Delegate(_) => "oval",
+            Instruction::Seq(_, _)
+            | Instruction::Choice(_, _)
+            | Instruction::NotAhead(_)
+            | Instruction::Error(_, _)
+            | Instruction::Label(_, _)
+            | Instruction::Delegate(_) => "oval",
             Instruction::Series(_) => "box",
         }
     }
