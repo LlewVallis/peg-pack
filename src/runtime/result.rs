@@ -21,11 +21,15 @@ impl<G: Grammar> ParseResult<G> {
         }
     }
 
-    pub fn is_error_free(&self) -> bool {
+    pub fn error_distance(&self) -> Option<usize> {
         match self {
-            Self::Matched(value) => value.is_error_free(),
-            Self::Unmatched { .. } => false,
+            ParseResult::Matched(value) => value.error_distance,
+            ParseResult::Unmatched { .. } => Some(0),
         }
+    }
+
+    pub fn is_error_free(&self) -> bool {
+        self.error_distance().is_none()
     }
 
     pub fn scan_distance(&self) -> usize {
@@ -75,7 +79,7 @@ impl<G: Grammar> ParseResult<G> {
                         grouping: Grouping::Error(expected),
                         scan_distance: value.scan_distance,
                         distance: value.distance,
-                        error_distance: value.error_distance,
+                        error_distance: Some(0),
                         children: value.children,
                     }
                 } else {
@@ -83,7 +87,7 @@ impl<G: Grammar> ParseResult<G> {
                         grouping: Grouping::Error(expected),
                         scan_distance: value.scan_distance,
                         distance: value.distance,
-                        error_distance: value.error_distance,
+                        error_distance: Some(0),
                         children: ArrayVec::of([value.box_unsimplified()]),
                     }
                 };
@@ -211,10 +215,6 @@ impl<G: Grammar> Match<G> {
 
     pub fn error_distance(&self) -> Option<usize> {
         self.error_distance
-    }
-
-    pub fn is_error_free(&self) -> bool {
-        self.error_distance.is_none()
     }
 
     pub fn walk(&self) -> impl Iterator<Item = (&Self, EnterExit)> {
