@@ -40,6 +40,7 @@ const OUT_DIR_FILES: &[(&str, &[u8])] = &[
         include_bytes!("runtime/array_vec.rs"),
     ),
     ("build/runtime/stack.rs", include_bytes!("runtime/stack.rs")),
+    ("build/runtime/cache.rs", include_bytes!("runtime/cache.rs")),
     ("build/runtime/refc.rs", include_bytes!("runtime/refc.rs")),
     ("build/harness.rs", include_bytes!("include/harness.rs")),
     ("build/loader.js", include_bytes!("include/loader.js")),

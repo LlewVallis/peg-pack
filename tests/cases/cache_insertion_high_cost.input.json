@@ -1,0 +1,34 @@
+{
+  "version": 0,
+  "status": "success",
+  "start": 0,
+  "settings": {
+    "mergeSeries": false
+  },
+  "instructions": [
+    {
+      "name": "seq",
+      "first": 1,
+      "second": 1
+    },
+    {
+      "name": "seq",
+      "first": 2,
+      "second": 2
+    },
+    {
+      "name": "seq",
+      "first": 3,
+      "second": 3
+    },
+    {
+      "name": "series",
+      "classes": [
+        {
+          "negated": true,
+          "ranges": []
+        }
+      ]
+    }
+  ]
+}

@@ -35,9 +35,10 @@ impl Parser {
                     result.push_str(&format!("    i{}:e -> i{};\n", id.0, second.0));
                 }
                 Instruction::NotAhead(target)
-                | Instruction::Delegate(target)
+                | Instruction::Error(target, _)
                 | Instruction::Label(target, _)
-                | Instruction::Error(target, _) => {
+                | Instruction::Cache(target, _)
+                | Instruction::Delegate(target) => {
                     result.push_str(&format!("    i{} -> i{};\n", id.0, target.0));
                 }
                 Instruction::Series(_) => {}
@@ -54,6 +55,7 @@ impl Parser {
             | Instruction::NotAhead(_)
             | Instruction::Error(_, _)
             | Instruction::Label(_, _)
+            | Instruction::Cache(_, _)
             | Instruction::Delegate(_) => "oval",
             Instruction::Series(_) => "box",
         }
@@ -67,6 +69,12 @@ impl Parser {
             Instruction::Error(_, expected) => {
                 let expected = &self.expecteds[expected];
                 format!("Error[{}]", self.expected_specifier(expected))
+            }
+            Instruction::Cache(_, id) => {
+                match id {
+                    Some(id) => format!("Cache[{}]", id),
+                    None => String::from("Cache[?]"),
+                }
             }
             Instruction::Delegate(_) => String::from("Delegate"),
             Instruction::Label(_, label) => {

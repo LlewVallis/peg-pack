@@ -6,6 +6,7 @@ use super::input::Input;
 use super::result::Match;
 use super::result::ParseResult;
 use super::stack::Stack;
+use super::cache::Cache;
 use super::{State, FINISH_STATE};
 
 pub struct Context<'a, I: Input + ?Sized, G: Grammar> {
@@ -14,6 +15,7 @@ pub struct Context<'a, I: Input + ?Sized, G: Grammar> {
     position: usize,
     state_stack: Stack<State>,
     result_stack: Stack<MaybeUninit<ParseResult<G>>>,
+    cache: Cache<G>,
 }
 
 impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
@@ -42,6 +44,7 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
             position: 0,
             state_stack: states,
             result_stack: Stack::of(MaybeUninit::uninit()),
+            cache: Cache::new(),
         }
     }
 
@@ -214,6 +217,27 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
     pub unsafe fn state_label_end(&mut self, label: G::Label) {
         let result = self.take_result();
         self.set_result(result.label(label));
+        self.pop_state();
+    }
+
+    pub unsafe fn state_cache_start<const TARGET: State, const CONTINUATION: State>(&mut self, slot: usize) {
+        if let Some(result) = self.cache.get(slot, self.position) {
+            self.position += result.distance();
+            self.set_result(result);
+            self.pop_state();
+            return;
+        }
+
+        *self.state_mut() = CONTINUATION;
+        self.push_state(TARGET);
+    }
+
+    pub unsafe fn state_cache_end(&mut self, slot: usize) {
+        let result = self.take_result();
+        let position = self.position - result.distance();
+        let result = self.cache.insert(slot, position, result);
+        self.set_result(result);
+
         self.pop_state();
     }
 

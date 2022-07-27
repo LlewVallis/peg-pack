@@ -10,6 +10,8 @@ mod expected_inference;
 mod merge_series;
 mod sort;
 mod trim;
+mod cache_insertion;
+mod cache_assignment;
 
 impl Parser {
     /// Transform and optimize the parser, cannot be run on an ill-formed grammar
@@ -27,6 +29,12 @@ impl Parser {
         }
 
         self.deduplicate();
+
+        if settings.cache_insertion {
+            self.insert_cache_points();
+        }
+
+        self.assign_cache_ids();
 
         self.infer_debug_symbols();
         self.sort();

@@ -20,6 +20,7 @@ impl Parser {
             Instruction::NotAhead(target) => self.characterize_not_ahead(target, states),
             Instruction::Error(target, _)
             | Instruction::Label(target, _)
+            | Instruction::Cache(target, _)
             | Instruction::Delegate(target) => self.characterize_delegate_like(target, states),
             Instruction::Series(series) => self.characterize_series(series),
         })

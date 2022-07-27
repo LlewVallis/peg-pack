@@ -1,5 +1,4 @@
 use std::hint::unreachable_unchecked;
-use std::mem;
 use std::mem::MaybeUninit;
 
 pub struct ArrayVec<T, const N: usize> {
@@ -29,11 +28,6 @@ impl<T, const N: usize> ArrayVec<T, N> {
         result
     }
 
-    pub unsafe fn concat_unchecked(mut first: Self, second: Self) -> Self {
-        first.extend_unchecked(second);
-        first
-    }
-
     pub fn len(&self) -> usize {
         if self.len > N {
             unsafe {
@@ -44,10 +38,6 @@ impl<T, const N: usize> ArrayVec<T, N> {
         self.len
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
     pub unsafe fn get_unchecked(&self, index: usize) -> &T {
         self.values.get_unchecked(index).assume_init_ref()
     }
@@ -56,15 +46,6 @@ impl<T, const N: usize> ArrayVec<T, N> {
         let len = self.len();
         *self.values.get_unchecked_mut(len) = MaybeUninit::new(value);
         self.len += 1;
-    }
-
-    pub unsafe fn extend_unchecked(&mut self, other: Self) {
-        for i in 0..other.len() {
-            let value = other.values.get_unchecked(i).assume_init_read();
-            self.push_unchecked(value);
-        }
-
-        mem::forget(other);
     }
 }
 

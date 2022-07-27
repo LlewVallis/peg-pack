@@ -69,11 +69,8 @@ impl<G: Grammar> ParseResult<G> {
 
     pub fn mark_error(self, expected: G::Expected) -> Self {
         match self {
-            ParseResult::Matched(value) => {
-                let replace =
-                    value.grouping.is_none() || value.grouping == Grouping::Error(expected);
-
-                let new_value = if replace {
+            Self::Matched(value) => {
+                let new_value = if value.grouping.is_none() {
                     Match {
                         grouping: Grouping::Error(expected),
                         scan_distance: value.scan_distance,
@@ -87,19 +84,19 @@ impl<G: Grammar> ParseResult<G> {
                         scan_distance: value.scan_distance,
                         distance: value.distance,
                         error_distance: value.error_distance,
-                        children: ArrayVec::of([Refc::new(value)]),
+                        children: ArrayVec::of([value.box_unsimplified()]),
                     }
                 };
 
-                ParseResult::Matched(new_value)
+                Self::Matched(new_value)
             }
-            ParseResult::Unmatched { .. } => self,
+            Self::Unmatched { .. } => self,
         }
     }
 
     pub fn label(self, label: G::Label) -> Self {
         match self {
-            ParseResult::Matched(value) => {
+            Self::Matched(value) => {
                 let new_value = if value.grouping.is_none() {
                     Match {
                         grouping: Grouping::Label(label),
@@ -114,19 +111,21 @@ impl<G: Grammar> ParseResult<G> {
                         scan_distance: value.scan_distance,
                         distance: value.distance,
                         error_distance: value.error_distance,
-                        children: ArrayVec::of([Refc::new(value)]),
+                        children: ArrayVec::of([value.box_unsimplified()]),
                     }
                 };
 
-                ParseResult::Matched(new_value)
+                Self::Matched(new_value)
             }
-            ParseResult::Unmatched { .. } => self,
+            Self::Unmatched { .. } => self,
         }
     }
 }
 
 const MATCH_CHILDREN: usize = 4;
 
+// If children is non-empty, `scan_distance`, `distance` and `error_distance`
+// can be derived from children
 pub struct Match<G: Grammar> {
     grouping: Grouping<G::Label, G::Expected>,
     scan_distance: usize,
@@ -161,62 +160,41 @@ impl<G: Grammar> Match<G> {
                 .map(|distance| first.distance + distance)
         });
 
-        let first_grouping = first.grouping;
-        let second_grouping = second.grouping;
-
-        let concatenation_would_overflow =
-            (first.children.len() + second.children.len()) > MATCH_CHILDREN;
-        let both_have_no_label = first_grouping.is_none() && second_grouping.is_none();
-        let can_concatenate = both_have_no_label && !concatenation_would_overflow;
-
-        if can_concatenate {
-            let children = unsafe { ArrayVec::concat_unchecked(first.children, second.children) };
-
-            return Self {
-                grouping: first.grouping,
-                scan_distance,
-                distance,
-                error_distance,
-                children,
-            };
-        }
-
-        if first.is_insignificant() {
-            return Self {
-                grouping: second.grouping,
-                scan_distance,
-                distance,
-                error_distance,
-                children: second.children,
-            };
-        }
-
-        if second.is_insignificant() {
-            return Self {
-                grouping: first.grouping,
-                scan_distance,
-                distance,
-                error_distance,
-                children: first.children,
-            };
-        }
-
         Self {
             grouping: Grouping::None,
             scan_distance,
             distance,
             error_distance,
-            children: ArrayVec::of([Refc::new(first), Refc::new(second)]),
+            children: ArrayVec::of([first.boxed(), second.boxed()]),
         }
-    }
-
-    fn is_insignificant(&self) -> bool {
-        self.distance == 0 && self.grouping.is_none() && self.children.is_empty()
     }
 
     pub fn extend_scan_distance(mut self, amount: usize) -> Self {
         self.scan_distance = self.scan_distance.max(amount);
         self
+    }
+
+    pub fn boxed(self) -> Refc<Self> {
+        if self.grouping == Grouping::None && self.children.len() == 1 {
+            let target = unsafe { self.children.get_unchecked(0) };
+            return target.clone();
+        }
+
+        self.box_unsimplified()
+    }
+
+    pub fn box_unsimplified(self) -> Refc<Self> {
+        Refc::new(self)
+    }
+
+    pub fn unboxed(boxed: &Refc<Self>) -> Self {
+        Self {
+            grouping: Grouping::None,
+            scan_distance: boxed.scan_distance,
+            distance: boxed.distance,
+            error_distance: boxed.error_distance,
+            children: ArrayVec::of([boxed.clone()])
+        }
     }
 
     pub fn grouping(&self) -> Grouping<G::Label, G::Expected> {

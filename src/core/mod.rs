@@ -153,11 +153,12 @@ impl Parser {
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct CompilerSettings {
     pub merge_series: bool,
+    pub cache_insertion: bool,
 }
 
 impl CompilerSettings {
     pub fn normal() -> Self {
-        Self { merge_series: true }
+        Self { merge_series: true, cache_insertion: true }
     }
 }
 
@@ -195,6 +196,7 @@ enum Instruction {
     NotAhead(InstructionId),
     Error(InstructionId, ExpectedId),
     Label(InstructionId, LabelId),
+    Cache(InstructionId, Option<usize>),
     Delegate(InstructionId),
     Series(SeriesId),
 }
@@ -208,6 +210,7 @@ impl Instruction {
             Instruction::NotAhead(target)
             | Instruction::Error(target, _)
             | Instruction::Label(target, _)
+            | Instruction::Cache(target, _)
             | Instruction::Delegate(target) => (Some(target), None),
             Instruction::Series(_) => (None, None),
         };
@@ -225,6 +228,7 @@ impl Instruction {
             Instruction::Error(target, expected) => Instruction::Error(mapper(target), expected),
             Instruction::Label(target, label) => Instruction::Label(mapper(target), label),
             Instruction::Delegate(target) => Instruction::Delegate(mapper(target)),
+            Instruction::Cache(target, id) => Instruction::Cache(mapper(target), id),
             Instruction::Series(_) => *self,
         }
     }

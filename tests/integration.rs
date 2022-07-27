@@ -42,6 +42,8 @@ cases!(
     deduplicate_rotated_components,
     deduplicate_component_instructions,
     infer_expected,
+    cache_insertion_low_cost,
+    cache_insertion_high_cost,
 );
 
 #[derive(Deserialize)]
@@ -55,11 +57,13 @@ struct Input {
 struct InputSettings {
     #[serde(default = "return_true")]
     merge_series: bool,
+    #[serde(default = "return_true")]
+    cache_insertion: bool,
 }
 
 impl Default for InputSettings {
     fn default() -> Self {
-        Self { merge_series: true }
+        serde_json::from_str("{}").unwrap()
     }
 }
 
@@ -72,6 +76,7 @@ fn test(input: &[u8], expected: &[u8]) {
 
     let settings = CompilerSettings {
         merge_series: settings.merge_series,
+        cache_insertion: settings.cache_insertion,
     };
 
     let parser = Parser::load(input, settings).unwrap();

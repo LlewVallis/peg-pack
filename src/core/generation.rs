@@ -279,6 +279,24 @@ impl Parser {
                 }
                 _ => unreachable!(),
             },
+            Instruction::Cache(target, id) => {
+                function.line(&format!("let id = {};", id.unwrap()));
+
+                match state.stage {
+                    0 => {
+                        let target_name = format!("STATE_{}_0", target.0);
+                        let continuation_name = format!("STATE_{}_{}", state.id.0, state.stage + 1);
+                        function.line(&format!(
+                            "ctx.state_cache_start::<{}, {}>(id);",
+                            target_name, continuation_name
+                        ));
+                    }
+                    1 => {
+                        function.line("ctx.state_cache_end(id);");
+                    }
+                    _ => unreachable!(),
+                }
+            },
             Instruction::Delegate(id) => {
                 assert_eq!(state.stage, 0);
                 self.generate_unary_consuming_dispatch(&mut function, "state_delegate", id);
@@ -421,12 +439,13 @@ impl Parser {
 
         for (id, instruction) in self.instructions() {
             let stages = match instruction {
-                Instruction::Seq(_, _) => 3,
+                Instruction::Seq(_, _) |
                 Instruction::Choice(_, _) => 3,
-                Instruction::NotAhead(_) => 2,
-                Instruction::Error(_, _) => 2,
-                Instruction::Label(_, _) => 2,
-                Instruction::Delegate(_) => 1,
+                Instruction::NotAhead(_) |
+                Instruction::Error(_, _) |
+                Instruction::Label(_, _) |
+                Instruction::Cache(_, _) => 2,
+                Instruction::Delegate(_) |
                 Instruction::Series(_) => 1,
             };
 

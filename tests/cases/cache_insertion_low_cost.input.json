@@ -1,0 +1,19 @@
+{
+  "version": 0,
+  "status": "success",
+  "start": 0,
+  "settings": {
+    "mergeSeries": false
+  },
+  "instructions": [
+    {
+      "name": "seq",
+      "first": 1,
+      "second": 1
+    },
+    {
+      "name": "series",
+      "classes": []
+    }
+  ]
+}

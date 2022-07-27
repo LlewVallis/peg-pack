@@ -53,6 +53,7 @@ impl Parser {
             Instruction::NotAhead(target)
             | Instruction::Error(target, _)
             | Instruction::Label(target, _)
+            | Instruction::Cache(target, _)
             | Instruction::Delegate(target) => self.can_reach(base, target, visited, characters),
             Instruction::Series(_) => false,
         };

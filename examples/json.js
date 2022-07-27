@@ -1,26 +1,52 @@
-const ws = g.whitespace(g.choice(" ", "\n", "\r", "\t"));
+const token = () => g.choice(
+    g.repOne(wordCharacter),
+    string,
+    number,
+);
 
-const value = () => ws.choice(
+const wordCharacter = () => g.oneOf(["a", "z"], ["A", "Z"]);
+
+const keyword = value => g.seq(value, g.notAhead(wordCharacter));
+
+const h = g
+    .whitespace(g.choice(" ", "\n", "\r", "\t"))
+    .tokens(token);
+
+const recover = () => h.choice("}", "]", ",", value);
+
+const value = () => h.choice(
     object,
     array,
     string,
     number,
-    ws.label("null", "null"),
-    ws.label("boolean", "true"),
-    ws.label("boolean", "false"),
+    h.label("null", keyword("null")),
+    h.label("boolean", keyword("true")),
+    h.label("boolean", keyword("false")),
 );
 
-const object = () => ws.label("object", ws.seq("{", ws.rep(entry, ","), "}"));
-
-const entry = () => ws.label("entry", ws.seq(
-    ws.label("key", string),
-    ":",
-    ws.label("value", value)
+const object = () => h.label("object", h.then()(
+    "{",
+    h.until("}")(entry, ","),
+    "}"
 ));
 
-const array = () => ws.label("array", ws.seq("[", ws.rep(value, ","), "]"));
+const entry = () => h.label("entry", h.then(recover)(
+    h.label("key", string),
+    ":",
+    h.label("value", value),
+));
 
-const string = () => ws.label("string", g.seq("\"", g.rep(stringCharacter), "\""));
+const array = () => h.label("array", h.then()(
+    "[",
+    h.until("]")(value, ","),
+    "]",
+));
+
+const string = () => g.label("string", g.then()(
+    "\"",
+    g.until("\"")(stringCharacter),
+    "\"",
+));
 
 const stringCharacter = () => g.choice(
     g.noneOf([0, 31], [127, 255], "\"", "\\"),
@@ -31,24 +57,38 @@ const escapeSequence = () => g.seq(
     "\\",
     g.choice(
         g.choice("\"", "\\", "/", "b", "f", "n", "r", "t"),
-        g.seq("u", hexDigit, hexDigit, hexDigit, hexDigit),
-    )
+        g.seq(
+            "u",
+            recoveringHexDigit,
+            recoveringHexDigit,
+            recoveringHexDigit,
+            recoveringHexDigit
+        ),
+    ),
+);
+
+const recoveringHexDigit = () => g.choice(
+    hexDigit,
+    g.error(g.choice(g.noneOf("\\", "\""), g.empty), hexDigit),
 );
 
 const hexDigit = () => g.oneOf(["0", "9"], ["a", "f"], ["A", "F"]);
 
-const number = () => ws.label("number", g.seq(
+const number = () => g.label("number", g.seq(
     g.opt("-"),
-    g.choice("0", g.seq(startDigit, g.rep(digit))),
+    g.choice(
+        "0",
+        g.seq(startDigit, g.rep(digit))
+    ),
     g.opt(fractional),
     g.opt(exponent),
 ));
 
-const fractional = () => g.seq(".", g.repOne(digit));
+const fractional = () => g.then(recover)(".", g.repOne(digit));
 
-const exponent = () => g.seq(
+const exponent = () => g.then(recover)(
     g.choice("e", "E"),
-    g.opt(g.choice("+", "-")),
+    g.opt("+", "-"),
     g.repOne(digit),
 );
 
@@ -56,4 +96,4 @@ const startDigit = () => g.oneOf(["1", "9"]);
 
 const digit = () => g.oneOf(["0", "9"]);
 
-module.exports = ws.seq(ws.empty, value, ws.eof);
+module.exports = h.then()(h.empty, value, h.eof);

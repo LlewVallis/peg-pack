@@ -1,0 +1,18 @@
+{
+  "start": 0,
+  "instructions": [
+    { "seq": [1, 1] },
+    { "cache": 2 },
+    { "seq": [3, 3] },
+    { "seq": [4, 4] },
+    { "series": 0 }
+  ],
+  "series": [
+    [{
+        "negated": true,
+        "ranges": []
+    }]
+  ],
+  "labels": [],
+  "expecteds": []
+}

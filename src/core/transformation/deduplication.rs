@@ -1,7 +1,8 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::hash::{Hash, Hasher};
+use std::mem;
 
-use seahash::SeaHasher;
+use seahash::{SeaHasher};
 
 use crate::core::structure::{Component, ComponentId, Components};
 use crate::core::{Instruction, InstructionId, Parser};
@@ -243,23 +244,26 @@ impl Parser {
     }
 
     fn intrinsic_instruction_hash(&self, instruction: Instruction, hasher: &mut impl Hasher) {
+        let discriminant = mem::discriminant(&instruction);
+        discriminant.hash(hasher);
+
         match instruction {
-            Instruction::Seq(_, _) => hasher.write_u8(0),
-            Instruction::Choice(_, _) => hasher.write_usize(1),
-            Instruction::NotAhead(_) => hasher.write_u8(2),
             Instruction::Error(_, expected) => {
-                hasher.write_u8(3);
-                hasher.write_usize(expected.0);
+                expected.0.hash(hasher);
             }
             Instruction::Label(_, label) => {
-                hasher.write_u8(4);
-                hasher.write_usize(label.0);
+                label.0.hash(hasher);
             }
-            Instruction::Delegate(_) => hasher.write_u8(5),
+            Instruction::Cache(_, id) => {
+                id.hash(hasher);
+            },
             Instruction::Series(series) => {
-                hasher.write_u8(6);
-                hasher.write_usize(series.0)
+                series.0.hash(hasher);
             }
+            Instruction::Seq(_, _) |
+            Instruction::Choice(_, _) |
+            Instruction::NotAhead(_) |
+            Instruction::Delegate(_) => {}
         }
     }
 
