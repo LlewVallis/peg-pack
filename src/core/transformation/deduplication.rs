@@ -2,7 +2,7 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::mem;
 
-use seahash::{SeaHasher};
+use seahash::SeaHasher;
 
 use crate::core::structure::{Component, ComponentId, Components};
 use crate::core::{Instruction, InstructionId, Parser};
@@ -256,14 +256,14 @@ impl Parser {
             }
             Instruction::Cache(_, id) => {
                 id.hash(hasher);
-            },
+            }
             Instruction::Series(series) => {
                 series.0.hash(hasher);
             }
-            Instruction::Seq(_, _) |
-            Instruction::Choice(_, _) |
-            Instruction::NotAhead(_) |
-            Instruction::Delegate(_) => {}
+            Instruction::Seq(_, _)
+            | Instruction::Choice(_, _)
+            | Instruction::NotAhead(_)
+            | Instruction::Delegate(_) => {}
         }
     }
 

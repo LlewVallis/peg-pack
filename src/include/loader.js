@@ -12,8 +12,6 @@ class Instruction {}
 
 class FunctionRuleError extends Error {}
 
-const anonymousRules = new WeakSet();
-
 function createInstruction(name, object) {
     const id = instructions.length;
     instructions.push(buildInstruction(name, object));
@@ -70,9 +68,7 @@ function resolveFunctionRule(rule) {
     instructionIds.set(rule, id);
     instructions.push(null);
 
-    const hasName = typeof rule.name === "string"
-        && rule.name !== ""
-        && !anonymousRules.has(rule);
+    const hasName = typeof rule.name === "string" && rule.name !== "";
 
     let result;
     try {
@@ -183,7 +179,7 @@ function seq(...rules) {
 }
 
 function then(...syncs) {
-    const f = (...rules) => {
+    return (...rules) => {
         const transformedRules = rules.map((rule, i) => {
             if (i === 0) {
                 return rule;
@@ -194,10 +190,6 @@ function then(...syncs) {
 
         return this.seq(...transformedRules);
     };
-
-    anonymousRules.add(f);
-
-    return f;
 }
 
 function choice(...rules) {
@@ -226,24 +218,18 @@ function strictChoice(...rules) {
 }
 
 function recover(...syncs) {
-    const f = (rule) => {
+    return (rule) => {
         const sync = this.ahead(...syncs, this.eof);
 
-        const result = () => this.strictChoice(
+        const result = this.anonymize(() => this.strictChoice(
             rule,
             g.seq(sync, this.error(this.empty, rule)),
             this.seq(this.error(this.any, rule), result),
-        );
-
-        anonymousRules.add(result);
+        ));
 
         const instruction = resolveInstruction(result);
-        return createInstruction("delegate", { target: instruction });
+        return createInstruction("delegate", {target: instruction});
     };
-
-    anonymousRules.add(f);
-
-    return f;
 }
 
 function ahead(...rules) {
@@ -310,8 +296,9 @@ function opt(...rules) {
 }
 
 function repOne(rule, separator = this.empty) {
-    const more = () => this.opt(this.seq(separator, rule, more));
-    anonymousRules.add(more);
+    const more = this.anonymize(() => this.opt(
+        this.seq(separator, rule, more)
+    ));
 
     return this.seq(rule, more);
 }
@@ -322,7 +309,7 @@ function rep(rule, separator = this.empty) {
 
 function untilOne(...syncs) {
     return (rule, separator = this.empty) => {
-        const more = () => this.choice(
+        const more = this.anonymize(() => this.choice(
             this.ahead(...syncs, this.eof),
             this.seq(
                 this.recover(...syncs, rule)(separator),
@@ -331,9 +318,7 @@ function untilOne(...syncs) {
                     more
                 )),
             ),
-        );
-
-        anonymousRules.add(more);
+        ));
 
         return this.recover(...syncs)(this.seq(rule, more));
     };
@@ -341,7 +326,7 @@ function untilOne(...syncs) {
 
 function until(...syncs) {
     return (rule, separator = this.empty) => {
-        const more = () => this.choice(
+        const more = this.anonymize(() => this.choice(
             this.ahead(...syncs, this.eof),
             this.seq(
                 this.recover(...syncs, rule)(separator),
@@ -350,9 +335,50 @@ function until(...syncs) {
                     more
                 )),
             ),
-        );
+        ));
 
-        anonymousRules.add(more);
+        return this.recover(...syncs)(this.choice(
+            this.ahead(...syncs, this.eof),
+            this.seq(rule, more)
+        ));
+    };
+}
+
+function untilOneTailed(...syncs) {
+    return (rule, separator) => {
+        const more = this.anonymize(() => this.choice(
+            this.seq(
+                this.opt(separator),
+                this.ahead(...syncs, this.eof),
+            ),
+            this.seq(
+                this.recover(...syncs, rule)(separator),
+                this.recover(...syncs)(this.seq(
+                    rule,
+                    more
+                )),
+            ),
+        ));
+
+        return this.recover(...syncs)(this.seq(rule, more));
+    };
+}
+
+function untilTailed(...syncs) {
+    return (rule, separator) => {
+        const more = this.anonymize(() => this.choice(
+            this.seq(
+                this.opt(separator),
+                this.ahead(...syncs, this.eof),
+            ),
+            this.seq(
+                this.recover(...syncs, rule)(separator),
+                this.recover(...syncs)(this.seq(
+                    rule,
+                    more
+                )),
+            ),
+        ));
 
         return this.recover(...syncs)(this.choice(
             this.ahead(...syncs, this.eof),
@@ -369,9 +395,16 @@ function eof() {
     return this.notAhead(this.any);
 }
 
+function anonymize(f) {
+    if (!(f instanceof Function)) {
+        throw new TypeError("Can only anonymize functions");
+    }
+
+    return (...args) => f(...args);
+}
+
 function whitespace(rule) {
-    const ws = () => this.rep(rule);
-    anonymousRules.add(ws);
+    const ws = this.anonymize(() => this.rep(rule));
 
     const base = interfaceBases.get(this);
     const newBase = { ...base };
@@ -409,8 +442,7 @@ function prepareInterface(base) {
     const result = {};
 
     for (const key of Object.keys(base)) {
-        result[key] = base[key].bind(result);
-        anonymousRules.add(result[key]);
+        result[key] = anonymize(base[key].bind(result));
     }
 
     interfaceBases.set(result, base);
@@ -438,8 +470,11 @@ globalThis.g = prepareInterface({
     rep,
     untilOne,
     until,
+    untilOneTailed,
+    untilTailed,
     any,
     eof,
+    anonymize,
     whitespace,
     tokens,
 });

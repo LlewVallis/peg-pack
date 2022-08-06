@@ -70,12 +70,10 @@ impl Parser {
                 let expected = &self.expecteds[expected];
                 format!("Error[{}]", self.expected_specifier(expected))
             }
-            Instruction::Cache(_, id) => {
-                match id {
-                    Some(id) => format!("Cache[{}]", id),
-                    None => String::from("Cache[?]"),
-                }
-            }
+            Instruction::Cache(_, id) => match id {
+                Some(id) => format!("Cache[{}]", id),
+                None => String::from("Cache[?]"),
+            },
             Instruction::Delegate(_) => String::from("Delegate"),
             Instruction::Label(_, label) => {
                 let label = &self.labels[label];

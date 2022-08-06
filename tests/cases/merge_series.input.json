@@ -4,47 +4,71 @@
   "start": 0,
   "instructions": [
     {
-      "name": "seq",
+      "name": "choice",
       "first": 1,
       "second": 2
     },
     {
-      "name": "seq",
+      "name": "choice",
       "first": 3,
       "second": 4
     },
     {
-      "name": "seq",
+      "name": "choice",
       "first": 5,
       "second": 6
     },
     {
       "name": "series",
-      "classes": [{
-        "negated": false,
-        "ranges": [[1, 1]]
-      }]
+      "classes": [
+        {
+          "negated": false,
+          "ranges": [[1, 1]]
+        },
+        {
+          "negated": false,
+          "ranges": [[2, 6]]
+        }
+      ]
     },
     {
       "name": "series",
-      "classes": [{
-        "negated": false,
-        "ranges": [[2, 2]]
-      }]
+      "classes": [
+        {
+          "negated": false,
+          "ranges": [[1, 1]]
+        },
+        {
+          "negated": true,
+          "ranges": [[1, 2], [4, 4], [6, 7]]
+        }
+      ]
     },
     {
       "name": "series",
-      "classes": [{
-        "negated": false,
-        "ranges": [[3, 3]]
-      }]
+      "classes": [
+        {
+          "negated": true,
+          "ranges": [[1, 1]]
+        },
+        {
+          "negated": false,
+          "ranges": [[1, 1], [2, 2]]
+        }
+      ]
     },
     {
       "name": "series",
-      "classes": [{
-        "negated": false,
-        "ranges": [[4, 4]]
-      }]
+      "classes": [
+        {
+          "negated": false,
+          "ranges": [[2, 2]]
+        },
+        {
+          "negated": false,
+          "ranges": [[1, 1]]
+        }
+      ]
     }
   ]
 }

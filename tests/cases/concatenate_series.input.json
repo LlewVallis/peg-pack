@@ -1,0 +1,50 @@
+{
+  "version": 0,
+  "status": "success",
+  "start": 0,
+  "instructions": [
+    {
+      "name": "seq",
+      "first": 1,
+      "second": 2
+    },
+    {
+      "name": "seq",
+      "first": 3,
+      "second": 4
+    },
+    {
+      "name": "seq",
+      "first": 5,
+      "second": 6
+    },
+    {
+      "name": "series",
+      "classes": [{
+        "negated": false,
+        "ranges": [[1, 1]]
+      }]
+    },
+    {
+      "name": "series",
+      "classes": [{
+        "negated": false,
+        "ranges": [[2, 2]]
+      }]
+    },
+    {
+      "name": "series",
+      "classes": [{
+        "negated": false,
+        "ranges": [[3, 3]]
+      }]
+    },
+    {
+      "name": "series",
+      "classes": [{
+        "negated": false,
+        "ranges": [[4, 4]]
+      }]
+    }
+  ]
+}

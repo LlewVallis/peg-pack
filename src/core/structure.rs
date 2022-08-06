@@ -25,17 +25,16 @@ impl Parser {
 
     /// Computes the predecessors of each instruction allowing for duplicates when an instruction
     /// references another many times
-    pub(super) fn compute_duplicated_predecessors(&self) -> HashMap<InstructionId, Vec<InstructionId>> {
+    pub(super) fn compute_duplicated_predecessors(
+        &self,
+    ) -> HashMap<InstructionId, Vec<InstructionId>> {
         let mut results = HashMap::new();
 
         for (id, instruction) in self.instructions() {
             results.entry(id).or_insert(Vec::new());
 
             for successor in instruction.successors() {
-                results
-                    .entry(successor)
-                    .or_insert(Vec::new())
-                    .push(id);
+                results.entry(successor).or_insert(Vec::new()).push(id);
             }
         }
 

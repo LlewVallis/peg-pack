@@ -296,7 +296,7 @@ impl Parser {
                     }
                     _ => unreachable!(),
                 }
-            },
+            }
             Instruction::Delegate(id) => {
                 assert_eq!(state.stage, 0);
                 self.generate_unary_consuming_dispatch(&mut function, "state_delegate", id);
@@ -439,14 +439,12 @@ impl Parser {
 
         for (id, instruction) in self.instructions() {
             let stages = match instruction {
-                Instruction::Seq(_, _) |
-                Instruction::Choice(_, _) => 3,
-                Instruction::NotAhead(_) |
-                Instruction::Error(_, _) |
-                Instruction::Label(_, _) |
-                Instruction::Cache(_, _) => 2,
-                Instruction::Delegate(_) |
-                Instruction::Series(_) => 1,
+                Instruction::Seq(_, _) | Instruction::Choice(_, _) => 3,
+                Instruction::NotAhead(_)
+                | Instruction::Error(_, _)
+                | Instruction::Label(_, _)
+                | Instruction::Cache(_, _) => 2,
+                Instruction::Delegate(_) | Instruction::Series(_) => 1,
             };
 
             for stage in 0..stages {

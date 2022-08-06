@@ -118,7 +118,9 @@ impl Parser {
                 self.expected_at(first, result, characters, visited);
                 self.expected_at(second, result, characters, visited);
             }
-            Instruction::Error(target, _) | Instruction::Cache(target, _) | Instruction::Delegate(target) => {
+            Instruction::Error(target, _)
+            | Instruction::Cache(target, _)
+            | Instruction::Delegate(target) => {
                 self.expected_at(target, result, characters, visited);
             }
             Instruction::Label(_, label) => {

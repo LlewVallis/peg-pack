@@ -12,13 +12,13 @@ pub use result::{Match, ParseResult};
 
 mod array_vec;
 mod buffered_iter;
+mod cache;
 mod context;
 mod grammar;
 mod input;
 mod refc;
 mod result;
 mod stack;
-mod cache;
 
 pub struct GenParseMatch<G: Grammar>(pub Match<G>);
 

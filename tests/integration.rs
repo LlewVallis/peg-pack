@@ -36,6 +36,7 @@ cases!(
     eliminate_delegates,
     fold_never_series,
     merge_series,
+    concatenate_series,
     deduplicate_series,
     deduplicate_label,
     deduplicate_components,

@@ -3,15 +3,14 @@ use std::collections::HashMap;
 use crate::core::Parser;
 use crate::core::{CompilerSettings, InstructionId};
 
+mod cache_assignment;
+mod cache_insertion;
 mod debug_symbol_inference;
 mod deduplication;
-mod delegate_elimination;
 mod expected_inference;
-mod merge_series;
+mod normalize;
 mod sort;
 mod trim;
-mod cache_insertion;
-mod cache_assignment;
 
 impl Parser {
     /// Transform and optimize the parser, cannot be run on an ill-formed grammar
@@ -22,11 +21,7 @@ impl Parser {
         self.trim();
         self.sort();
 
-        self.remove_delegates();
-
-        if settings.merge_series {
-            self.merge_series();
-        }
+        self.normalize(settings);
 
         self.deduplicate();
 

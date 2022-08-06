@@ -1,7 +1,8 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::ops::Index;
 
 use crate::core::{Instruction, InstructionId, Parser};
+use crate::ordered_set::OrderedSet;
 
 impl Parser {
     /// Solves an inductive function over the instruction graph by iterating
@@ -16,10 +17,10 @@ impl Parser {
         let predecessors = self.compute_predecessors();
         let mut states = FixedPointStates::new(default);
 
-        let mut queue = FixedPointQueue::new();
+        let mut queue = OrderedSet::new();
 
         for (id, _) in self.instructions() {
-            queue.insert(id);
+            queue.push(id);
         }
 
         while let Some(id) = queue.pop() {
@@ -31,7 +32,7 @@ impl Parser {
 
             if updated {
                 for predecessor in &predecessors[&id] {
-                    queue.insert(*predecessor);
+                    queue.push(*predecessor);
                 }
             }
         }
@@ -63,35 +64,5 @@ impl<T> Index<InstructionId> for FixedPointStates<T> {
 
     fn index(&self, index: InstructionId) -> &T {
         self.map.get(&index).unwrap_or(&self.default)
-    }
-}
-
-struct FixedPointQueue {
-    elements: Vec<InstructionId>,
-    set: HashSet<InstructionId>,
-}
-
-impl FixedPointQueue {
-    pub fn new() -> Self {
-        Self {
-            elements: Vec::new(),
-            set: HashSet::new(),
-        }
-    }
-
-    pub fn insert(&mut self, value: InstructionId) {
-        if self.set.insert(value) {
-            self.elements.push(value);
-        }
-    }
-
-    pub fn pop(&mut self) -> Option<InstructionId> {
-        let result = self.elements.pop();
-
-        if let Some(id) = result {
-            self.set.remove(&id);
-        }
-
-        result
     }
 }

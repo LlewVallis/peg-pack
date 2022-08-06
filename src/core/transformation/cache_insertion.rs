@@ -8,9 +8,7 @@ impl Parser {
     pub(super) fn insert_cache_points(&mut self) {
         let predecessors = self.compute_duplicated_predecessors();
 
-        let mut instructions = self.walk()
-            .map(|(k, _)| k)
-            .collect::<Vec<_>>();
+        let mut instructions = self.walk().map(|(k, _)| k).collect::<Vec<_>>();
 
         instructions.reverse();
 
@@ -26,7 +24,10 @@ impl Parser {
             let mut visited = HashSet::new();
             let complexity = self.complexity(id, &mut visited);
 
-            if complexity.map(|value| value < CACHE_COMPLEXITY_THRESHOLD).unwrap_or(false) {
+            if complexity
+                .map(|value| value < CACHE_COMPLEXITY_THRESHOLD)
+                .unwrap_or(false)
+            {
                 continue;
             }
 
@@ -36,13 +37,8 @@ impl Parser {
             for pred_id in &predecessors[&id] {
                 let pred = self.instructions[*pred_id];
 
-                self.instructions[*pred_id] = pred.remapped(|old_id| {
-                    if old_id == id {
-                        new_id
-                    } else {
-                        old_id
-                    }
-                });
+                self.instructions[*pred_id] =
+                    pred.remapped(|old_id| if old_id == id { new_id } else { old_id });
             }
         }
     }
@@ -58,7 +54,11 @@ impl Parser {
         result
     }
 
-    fn complexity_unvisited(&self, id: InstructionId, visited: &mut HashSet<InstructionId>) -> Option<usize> {
+    fn complexity_unvisited(
+        &self,
+        id: InstructionId,
+        visited: &mut HashSet<InstructionId>,
+    ) -> Option<usize> {
         let instruction = self.instructions[id];
         let inherent_complexity = self.inherent_complexity(instruction);
 
@@ -68,26 +68,25 @@ impl Parser {
                 let second = self.complexity(second, visited)?;
                 Some(first + second + inherent_complexity)
             }
-            Instruction::NotAhead(target) |
-            Instruction::Error(target, _) |
-            Instruction::Label(target, _) |
-            Instruction::Delegate(target) => {
+            Instruction::NotAhead(target)
+            | Instruction::Error(target, _)
+            | Instruction::Label(target, _)
+            | Instruction::Delegate(target) => {
                 let target = self.complexity(target, visited)?;
                 Some(target + inherent_complexity)
             }
-            Instruction::Cache(_, _) | Instruction::Series(_) => Some(inherent_complexity)
+            Instruction::Cache(_, _) | Instruction::Series(_) => Some(inherent_complexity),
         }
     }
 
     fn inherent_complexity(&self, instruction: Instruction) -> usize {
         match instruction {
-            Instruction::Seq(_, _) |
-            Instruction::Choice(_, _) |
-            Instruction::NotAhead(_) |
-            Instruction::Delegate(_) => 4,
+            Instruction::Seq(_, _)
+            | Instruction::Choice(_, _)
+            | Instruction::NotAhead(_)
+            | Instruction::Delegate(_) => 4,
             Instruction::Cache(_, _) => 8,
-            Instruction::Error(_, _) |
-            Instruction::Label(_, _) => 16,
+            Instruction::Error(_, _) | Instruction::Label(_, _) => 16,
             Instruction::Series(id) => {
                 let series = &self.series[id];
                 series.classes().len() + 4

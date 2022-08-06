@@ -197,7 +197,7 @@ impl<G: Grammar> Match<G> {
             scan_distance: boxed.scan_distance,
             distance: boxed.distance,
             error_distance: boxed.error_distance,
-            children: ArrayVec::of([boxed.clone()])
+            children: ArrayVec::of([boxed.clone()]),
         }
     }
 

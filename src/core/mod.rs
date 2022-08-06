@@ -158,7 +158,10 @@ pub struct CompilerSettings {
 
 impl CompilerSettings {
     pub fn normal() -> Self {
-        Self { merge_series: true, cache_insertion: true }
+        Self {
+            merge_series: true,
+            cache_insertion: true,
+        }
     }
 }
 

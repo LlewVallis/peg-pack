@@ -1,7 +1,18 @@
 {
   "start": 0,
   "instructions": [
-    { "series": 0 }
+    {
+      "choice": [
+        1,
+        2
+      ]
+    },
+    {
+      "series": 0
+    },
+    {
+      "series": 1
+    }
   ],
   "series": [
     [
@@ -10,16 +21,18 @@
         "ranges": [[1, 1]]
       },
       {
-        "negated": false,
-        "ranges": [[2, 2]]
+        "negated": true,
+        "ranges": [[1, 1], [7, 7]]
+      }
+    ],
+    [
+      {
+        "negated": true,
+        "ranges": [[1, 1]]
       },
       {
         "negated": false,
-        "ranges": [[3, 3]]
-      },
-      {
-        "negated": false,
-        "ranges": [[4, 4]]
+        "ranges": [[1, 1], [2, 2]]
       }
     ]
   ],

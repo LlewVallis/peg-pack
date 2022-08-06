@@ -1,12 +1,12 @@
 use std::mem;
 use std::mem::MaybeUninit;
 
+use super::cache::Cache;
 use super::grammar::Grammar;
 use super::input::Input;
 use super::result::Match;
 use super::result::ParseResult;
 use super::stack::Stack;
-use super::cache::Cache;
 use super::{State, FINISH_STATE};
 
 pub struct Context<'a, I: Input + ?Sized, G: Grammar> {
@@ -220,7 +220,10 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         self.pop_state();
     }
 
-    pub unsafe fn state_cache_start<const TARGET: State, const CONTINUATION: State>(&mut self, slot: usize) {
+    pub unsafe fn state_cache_start<const TARGET: State, const CONTINUATION: State>(
+        &mut self,
+        slot: usize,
+    ) {
         if let Some(result) = self.cache.get(slot, self.position) {
             self.position += result.distance();
             self.set_result(result);

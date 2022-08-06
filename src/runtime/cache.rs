@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use super::{Match, ParseResult};
 use super::refc::Refc;
+use super::{Match, ParseResult};
 
 use super::Grammar;
 
@@ -12,32 +12,31 @@ pub struct Cache<G: Grammar> {
 impl<G: Grammar> Cache<G> {
     pub fn new() -> Self {
         Self {
-            mappings: HashMap::new()
+            mappings: HashMap::new(),
         }
     }
 
     pub fn get(&self, slot: usize, position: usize) -> Option<ParseResult<G>> {
-        let key = Key {
-            slot,
-            position,
-        };
+        let key = Key { slot, position };
 
         match self.mappings.get(&key)? {
             Entry::Matched(value) => {
                 let value = Match::unboxed(value);
                 Some(ParseResult::Matched(value))
             }
-            Entry::Unmatched { scan_distance } => {
-                Some(ParseResult::Unmatched { scan_distance: *scan_distance })
-            }
+            Entry::Unmatched { scan_distance } => Some(ParseResult::Unmatched {
+                scan_distance: *scan_distance,
+            }),
         }
     }
 
-    pub fn insert(&mut self, slot: usize, position: usize, result: ParseResult<G>) -> ParseResult<G> {
-        let key = Key {
-            slot,
-            position,
-        };
+    pub fn insert(
+        &mut self,
+        slot: usize,
+        position: usize,
+        result: ParseResult<G>,
+    ) -> ParseResult<G> {
+        let key = Key { slot, position };
 
         let (insertion, result) = match result {
             ParseResult::Matched(value) => {
