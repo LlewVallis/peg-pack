@@ -1,0 +1,25 @@
+{
+  "version": 0,
+  "status": "success",
+  "start": 0,
+  "settings": {
+    "mergeSeries": false,
+    "cacheInsertion": false
+  },
+  "instructions": [
+    {
+      "name": "choice",
+      "first": 1,
+      "second": 2
+    },
+    {
+      "name": "choice",
+      "first": 2,
+      "second": 1
+    },
+    {
+      "name": "series",
+      "classes": []
+    }
+  ]
+}

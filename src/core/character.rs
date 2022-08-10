@@ -55,9 +55,9 @@ impl Parser {
         let second = states[second];
 
         Character {
-            transparent: first.transparent || second.transparent,
-            antitransparent: first.antitransparent || second.antitransparent,
-            fallible: first.fallible && second.fallible,
+            transparent: first.transparent || first.fallible && second.transparent,
+            antitransparent: first.antitransparent || first.fallible && second.antitransparent,
+            fallible: first.fallible && second.fallible
         }
     }
 

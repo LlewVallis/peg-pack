@@ -45,6 +45,11 @@ cases!(
     infer_expected,
     cache_insertion_low_cost,
     cache_insertion_high_cost,
+    reorder_seqs,
+    reorder_seqs_loopback,
+    reorder_seqs_blowup,
+    reorder_choices,
+    reorder_choices_loopback,
 );
 
 #[derive(Deserialize)]
