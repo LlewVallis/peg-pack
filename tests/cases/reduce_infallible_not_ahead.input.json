@@ -2,15 +2,10 @@
   "version": 0,
   "status": "success",
   "start": 0,
-  "settings": {
-    "characterReplacement": false,
-    "mergeSeries": false
-  },
   "instructions": [
     {
-      "name": "seq",
-      "first": 1,
-      "second": 1
+      "name": "notAhead",
+      "target": 1
     },
     {
       "name": "series",

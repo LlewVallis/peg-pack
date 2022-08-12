@@ -3,6 +3,7 @@
   "status": "success",
   "start": 1,
   "settings": {
+    "characterReplacement": false,
     "mergeSeries": false
   },
   "instructions": [

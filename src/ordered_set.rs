@@ -25,6 +25,12 @@ impl<T: Hash + Eq + Copy> OrderedSet<T> {
             self.list.push(value);
         }
     }
+
+    pub fn extend(&mut self, values: impl IntoIterator<Item = T>) {
+        for value in values {
+            self.push(value);
+        }
+    }
 }
 
 impl<T: Hash + Eq + Copy> OrderedSet<T> {

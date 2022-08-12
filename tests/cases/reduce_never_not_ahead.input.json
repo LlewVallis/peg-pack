@@ -1,0 +1,18 @@
+{
+  "version": 0,
+  "status": "success",
+  "start": 0,
+  "instructions": [
+    {
+      "name": "notAhead",
+      "target": 1
+    },
+    {
+      "name": "series",
+      "classes": [{
+        "negated": false,
+        "ranges": []
+      }]
+    }
+  ]
+}

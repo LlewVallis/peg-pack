@@ -28,6 +28,12 @@ impl Series {
         }
     }
 
+    pub fn never() -> Self {
+        Self {
+            classes: vec![Class::new(false)],
+        }
+    }
+
     pub fn concatenate(first: &Series, second: &Series) -> Series {
         let mut result = Self::empty();
 

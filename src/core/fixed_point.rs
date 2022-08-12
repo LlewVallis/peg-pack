@@ -11,17 +11,17 @@ impl Parser {
     /// presence of cycles
     pub(super) fn solve_fixed_point<T: Eq>(
         &self,
+        base: HashMap<InstructionId, T>,
+        instructions: impl IntoIterator<Item = InstructionId>,
         default: T,
         mut evaluate: impl FnMut(InstructionId, Instruction, &FixedPointStates<T>) -> T,
     ) -> HashMap<InstructionId, T> {
         let predecessors = self.compute_predecessors();
-        let mut states = FixedPointStates::new(default);
+        let mut states = FixedPointStates::new(base, default);
 
         let mut queue = OrderedSet::new();
 
-        for (id, _) in self.instructions() {
-            queue.push(id);
-        }
+        queue.extend(instructions);
 
         while let Some(id) = queue.pop() {
             let instruction = self.instructions[id];
@@ -47,11 +47,8 @@ pub struct FixedPointStates<T> {
 }
 
 impl<T> FixedPointStates<T> {
-    fn new(default: T) -> Self {
-        Self {
-            default,
-            map: HashMap::new(),
-        }
+    fn new(map: HashMap<InstructionId, T>, default: T) -> Self {
+        Self { map, default }
     }
 
     fn set(&mut self, id: InstructionId, value: T) {

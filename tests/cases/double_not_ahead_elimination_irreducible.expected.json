@@ -1,0 +1,16 @@
+{
+  "start": 0,
+  "instructions": [
+    { "notAhead": 1 },
+    { "notAhead": 2 },
+    { "series": 0 }
+  ],
+  "series": [
+    [{
+      "negated": true,
+      "ranges": []
+    }]
+  ],
+  "labels": [],
+  "expecteds": []
+}

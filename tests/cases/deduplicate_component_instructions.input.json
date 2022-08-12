@@ -3,6 +3,7 @@
   "status": "success",
   "start": 0,
   "settings": {
+    "characterReplacement": false,
     "cacheInsertion": false
   },
   "instructions": [

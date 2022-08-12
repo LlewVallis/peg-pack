@@ -153,6 +153,7 @@ impl Parser {
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct CompilerSettings {
     pub merge_series: bool,
+    pub character_replacement: bool,
     pub cache_insertion: bool,
 }
 
@@ -160,6 +161,7 @@ impl CompilerSettings {
     pub fn normal() -> Self {
         Self {
             merge_series: true,
+            character_replacement: true,
             cache_insertion: true,
         }
     }

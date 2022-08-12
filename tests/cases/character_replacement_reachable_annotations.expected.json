@@ -1,0 +1,16 @@
+{
+  "start": 0,
+  "instructions": [
+    { "error": [1, 0] },
+    { "label": [2, 0] },
+    { "series": 0 }
+  ],
+  "series": [
+    []
+  ],
+  "labels": ["foo"],
+  "expecteds": [{
+    "labels": [],
+    "literals": []
+  }]
+}

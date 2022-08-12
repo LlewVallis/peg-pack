@@ -50,6 +50,12 @@ cases!(
     reorder_seqs_blowup,
     reorder_choices,
     reorder_choices_loopback,
+    reduce_infallible_not_ahead,
+    reduce_never_not_ahead,
+    double_not_ahead_elimination,
+    double_not_ahead_elimination_irreducible,
+    character_replacement_reachable_annotations,
+    character_replacement_unreachable_annotations,
 );
 
 #[derive(Deserialize)]
@@ -63,6 +69,8 @@ struct Input {
 struct InputSettings {
     #[serde(default = "return_true")]
     merge_series: bool,
+    #[serde(default = "return_true")]
+    character_replacement: bool,
     #[serde(default = "return_true")]
     cache_insertion: bool,
 }
@@ -82,6 +90,7 @@ fn test(input: &[u8], expected: &[u8]) {
 
     let settings = CompilerSettings {
         merge_series: settings.merge_series,
+        character_replacement: settings.character_replacement,
         cache_insertion: settings.cache_insertion,
     };
 
