@@ -5,7 +5,8 @@
   "settings": {
     "characterReplacement": false,
     "mergeSeries": false,
-    "cacheInsertion": false
+    "cacheInsertion": false,
+    "redundantJunctionElimination": false
   },
   "instructions": [
     {

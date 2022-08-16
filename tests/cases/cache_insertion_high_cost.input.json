@@ -22,6 +22,31 @@
       "second": 3
     },
     {
+      "name": "seq",
+      "first": 4,
+      "second": 4
+    },
+    {
+      "name": "seq",
+      "first": 5,
+      "second": 5
+    },
+    {
+      "name": "seq",
+      "first": 6,
+      "second": 6
+    },
+    {
+      "name": "seq",
+      "first": 7,
+      "second": 7
+    },
+    {
+      "name": "seq",
+      "first": 8,
+      "second": 8
+    },
+    {
       "name": "series",
       "classes": [
         {

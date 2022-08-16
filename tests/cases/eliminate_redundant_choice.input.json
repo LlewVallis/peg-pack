@@ -1,0 +1,36 @@
+{
+  "version": 0,
+  "status": "success",
+  "start": 0,
+  "instructions": [
+    {
+      "name": "choice",
+      "first": 1,
+      "second": 2
+    },
+    {
+      "name": "choice",
+      "first": 2,
+      "second": 3
+    },
+    {
+      "name": "series",
+      "classes": [{
+        "negated": false,
+        "ranges": []
+      }]
+    },
+    {
+      "name": "label",
+      "label": "foo",
+      "target": 4
+    },
+    {
+      "name": "series",
+      "classes": [{
+        "negated": true,
+        "ranges": []
+      }]
+    }
+  ]
+}

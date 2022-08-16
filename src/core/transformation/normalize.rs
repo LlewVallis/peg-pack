@@ -95,10 +95,7 @@ impl Parser {
                             .insert(id);
                     }
 
-                    state.characters = state.parser.patch_characters(
-                        state.characters,
-                        [id]
-                    );
+                    state.characters = state.parser.patch_characters(state.characters, [id]);
 
                     state.queue.push(id);
                     state.parser.instructions[id] = new_instruction;
@@ -132,10 +129,7 @@ impl<'a> State<'a> {
 
         let characters = mem::replace(&mut self.characters, HashMap::new());
 
-        self.characters = self.parser.patch_characters(
-            characters,
-            [id]
-        );
+        self.characters = self.parser.patch_characters(characters, [id]);
 
         id
     }
@@ -215,7 +209,11 @@ impl<'a> State<'a> {
 
         let character = self.characters[&id];
 
-        let series = if !character.fallible && !character.antitransparent && !character.error_prone && !character.label_prone {
+        let series = if !character.fallible
+            && !character.antitransparent
+            && !character.error_prone
+            && !character.label_prone
+        {
             Series::empty()
         } else if !character.possible() {
             Series::never()
@@ -230,18 +228,30 @@ impl<'a> State<'a> {
     fn eliminate_redundant_seqs(
         &mut self,
         _id: InstructionId,
-        instruction: Instruction
+        instruction: Instruction,
     ) -> Option<Instruction> {
+        if !self.settings.redundant_junction_elimination {
+            return None;
+        }
+
         let (left_id, left, right_id, right) = self.as_seq(instruction)?;
 
         let left_char = self.characters[&left_id];
         let right_char = self.characters[&right_id];
 
-        if !left_char.fallible && !left_char.antitransparent && !left_char.error_prone && !left_char.label_prone {
+        if !left_char.fallible
+            && !left_char.antitransparent
+            && !left_char.error_prone
+            && !left_char.label_prone
+        {
             return Some(right);
         }
 
-        if !right_char.fallible && !right_char.antitransparent && !right_char.error_prone && !right_char.label_prone {
+        if !right_char.fallible
+            && !right_char.antitransparent
+            && !right_char.error_prone
+            && !right_char.label_prone
+        {
             return Some(left);
         }
 
@@ -251,8 +261,12 @@ impl<'a> State<'a> {
     fn eliminate_redundant_choices(
         &mut self,
         _id: InstructionId,
-        instruction: Instruction
+        instruction: Instruction,
     ) -> Option<Instruction> {
+        if !self.settings.redundant_junction_elimination {
+            return None;
+        }
+        
         let (left_id, left, right_id, right) = self.as_choice(instruction)?;
 
         let left_char = self.characters[&left_id];
@@ -276,7 +290,7 @@ impl<'a> State<'a> {
     fn eliminate_double_not_aheads(
         &mut self,
         _id: InstructionId,
-        instruction: Instruction
+        instruction: Instruction,
     ) -> Option<Instruction> {
         let (_, target) = self.as_not_ahead(instruction)?;
         let (second_target_id, second_target) = self.as_not_ahead(target)?;

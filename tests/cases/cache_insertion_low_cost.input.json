@@ -14,7 +14,10 @@
     },
     {
       "name": "series",
-      "classes": []
+      "classes": [{
+          "negated": true,
+          "ranges": []
+      }]
     }
   ]
 }

@@ -1,35 +1,33 @@
-use std::mem;
-
 pub struct Stack<T> {
-    top: T,
-    elements: Vec<T>,
+    values: Vec<T>,
 }
 
 impl<T> Stack<T> {
-    pub fn of(value: T) -> Self {
+    pub fn new() -> Self {
         Self {
-            top: value,
-            elements: Vec::new(),
+            values: Vec::new()
         }
     }
 
-    pub unsafe fn top(&self) -> &T {
-        &self.top
+    pub fn of(value: T) -> Self {
+        let mut result = Self::new();
+        result.push(value);
+        result
     }
 
-    pub unsafe fn top_mut(&mut self) -> &mut T {
-        &mut self.top
+    pub fn top(&self) -> Option<&T> {
+        self.values.last()
+    }
+
+    pub fn top_mut(&mut self) -> Option<&mut T> {
+        self.values.last_mut()
     }
 
     pub fn push(&mut self, value: T) {
-        unsafe {
-            let old_top = mem::replace(self.top_mut(), value);
-            self.elements.push(old_top);
-        }
+        self.values.push(value);
     }
 
-    pub unsafe fn pop(&mut self) -> T {
-        let next = self.elements.pop().unwrap_unchecked();
-        mem::replace(self.top_mut(), next)
+    pub fn pop(&mut self) -> Option<T> {
+        self.values.pop()
     }
 }

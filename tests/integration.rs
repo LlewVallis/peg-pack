@@ -56,6 +56,8 @@ cases!(
     double_not_ahead_elimination_irreducible,
     character_replacement_reachable_annotations,
     character_replacement_unreachable_annotations,
+    eliminate_redundant_seq,
+    eliminate_redundant_choice,
 );
 
 #[derive(Deserialize)]
@@ -73,6 +75,8 @@ struct InputSettings {
     character_replacement: bool,
     #[serde(default = "return_true")]
     cache_insertion: bool,
+    #[serde(default = "return_true")]
+    redundant_junction_elimination: bool,
 }
 
 impl Default for InputSettings {
@@ -92,6 +96,7 @@ fn test(input: &[u8], expected: &[u8]) {
         merge_series: settings.merge_series,
         character_replacement: settings.character_replacement,
         cache_insertion: settings.cache_insertion,
+        redundant_junction_elimination: settings.redundant_junction_elimination,
     };
 
     let parser = Parser::load(input, settings).unwrap();

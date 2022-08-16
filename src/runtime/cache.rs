@@ -24,8 +24,12 @@ impl<G: Grammar> Cache<G> {
                 let value = Match::unboxed(value);
                 Some(ParseResult::Matched(value))
             }
-            Entry::Unmatched { scan_distance } => Some(ParseResult::Unmatched {
+            Entry::Unmatched {
+                scan_distance,
+                work,
+            } => Some(ParseResult::Unmatched {
                 scan_distance: *scan_distance,
+                work: *work,
             }),
         }
     }
@@ -44,8 +48,14 @@ impl<G: Grammar> Cache<G> {
                 let result = Match::unboxed(&boxed);
                 (Entry::Matched(boxed), ParseResult::Matched(result))
             }
-            ParseResult::Unmatched { scan_distance } => {
-                let insertion = Entry::Unmatched { scan_distance };
+            ParseResult::Unmatched {
+                scan_distance,
+                work,
+            } => {
+                let insertion = Entry::Unmatched {
+                    scan_distance,
+                    work,
+                };
                 (insertion, result)
             }
         };
@@ -63,5 +73,5 @@ struct Key {
 
 enum Entry<G: Grammar> {
     Matched(Refc<Match<G>>),
-    Unmatched { scan_distance: usize },
+    Unmatched { scan_distance: usize, work: usize },
 }

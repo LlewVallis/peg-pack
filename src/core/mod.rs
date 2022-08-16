@@ -155,6 +155,7 @@ pub struct CompilerSettings {
     pub merge_series: bool,
     pub character_replacement: bool,
     pub cache_insertion: bool,
+    pub redundant_junction_elimination: bool,
 }
 
 impl CompilerSettings {
@@ -163,6 +164,7 @@ impl CompilerSettings {
             merge_series: true,
             character_replacement: true,
             cache_insertion: true,
+            redundant_junction_elimination: true,
         }
     }
 }

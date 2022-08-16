@@ -20,33 +20,44 @@ mod refc;
 mod result;
 mod stack;
 
+pub(super) const SERIES_WORK: usize = 1;
+pub(super) const CACHE_WORK: usize = 25;
+pub(super) const LABEL_WORK: usize = 50;
+pub(super) const MARK_ERROR_WORK: usize = 50;
+pub(super) const NOT_AHEAD_WORK: usize = 1;
+pub(super) const CHOICE_WORK: usize = 1;
+pub(super) const SEQ_WORK: usize = 1;
+pub(super) const MAX_UNCACHED_WORK: usize = 250;
+
 pub struct GenParseMatch<G: Grammar>(pub Match<G>);
 
 impl<G: Grammar> GenParseMatch<G> {
-    fn write_node(&self, f: &mut Formatter, node: &Match<G>) -> fmt::Result {
+    fn write_node(&self, f: &mut Formatter, start: usize, node: &Match<G>) -> fmt::Result {
+        let end = start + node.distance();
+
         match node.grouping() {
-            Grouping::Label(label) => write!(f, "{:?}[{}]", label, node.distance()),
-            Grouping::Error(expected) => write!(f, "{:?}[{}]", expected, node.distance()),
+            Grouping::Label(label) => write!(f, "{:?}[{}-{}]", label, start, end),
+            Grouping::Error(expected) => write!(f, "{:?}[{}-{}]", expected, start, end),
             Grouping::None => Ok(()),
         }
     }
 
     fn next_is_enter<'b>(
         &self,
-        iter: &mut BufferedIter<impl Iterator<Item = (&'b Match<G>, EnterExit)>>,
+        iter: &mut BufferedIter<impl Iterator<Item = (usize, &'b Match<G>, EnterExit)>>,
     ) -> bool
     where
         G: 'b,
     {
         iter.peek()
-            .map(|(_, state)| *state == EnterExit::Enter)
+            .map(|(_, _, state)| *state == EnterExit::Enter)
             .unwrap_or(false)
     }
 
     fn delimit_normal<'b>(
         &self,
         f: &mut Formatter,
-        iter: &mut BufferedIter<impl Iterator<Item = (&'b Match<G>, EnterExit)>>,
+        iter: &mut BufferedIter<impl Iterator<Item = (usize, &'b Match<G>, EnterExit)>>,
     ) -> fmt::Result
     where
         G: 'b,
@@ -61,7 +72,7 @@ impl<G: Grammar> GenParseMatch<G> {
     fn delimit_pretty<'b>(
         &self,
         f: &mut Formatter,
-        iter: &mut BufferedIter<impl Iterator<Item = (&'b Match<G>, EnterExit)>>,
+        iter: &mut BufferedIter<impl Iterator<Item = (usize, &'b Match<G>, EnterExit)>>,
     ) -> fmt::Result
     where
         G: 'b,
@@ -86,7 +97,7 @@ impl<G: Grammar> GenParseMatch<G> {
     fn fmt_normal<'b>(
         &self,
         f: &mut Formatter,
-        iter: &mut BufferedIter<impl Iterator<Item = (&'b Match<G>, EnterExit)>>,
+        iter: &mut BufferedIter<impl Iterator<Item = (usize, &'b Match<G>, EnterExit)>>,
     ) -> fmt::Result
     where
         G: 'b,
@@ -95,10 +106,10 @@ impl<G: Grammar> GenParseMatch<G> {
             return write!(f, "Match");
         }
 
-        while let Some((node, state)) = iter.next() {
+        while let Some((position, node, state)) = iter.next() {
             match state {
                 EnterExit::Enter => {
-                    self.write_node(f, node)?;
+                    self.write_node(f, position, node)?;
 
                     if self.next_is_enter(iter) {
                         write!(f, "(")?;
@@ -120,7 +131,7 @@ impl<G: Grammar> GenParseMatch<G> {
     fn fmt_pretty<'b>(
         &self,
         f: &mut Formatter,
-        iter: &mut BufferedIter<impl Iterator<Item = (&'b Match<G>, EnterExit)>>,
+        iter: &mut BufferedIter<impl Iterator<Item = (usize, &'b Match<G>, EnterExit)>>,
     ) -> fmt::Result
     where
         G: 'b,
@@ -132,7 +143,7 @@ impl<G: Grammar> GenParseMatch<G> {
             return write!(f, "Match");
         }
 
-        while let Some((node, state)) = iter.next() {
+        while let Some((position, node, state)) = iter.next() {
             match state {
                 EnterExit::Enter => {
                     if start {
@@ -141,7 +152,7 @@ impl<G: Grammar> GenParseMatch<G> {
                         self.newline_indent(f, indent)?;
                     }
 
-                    self.write_node(f, node)?;
+                    self.write_node(f, position, node)?;
 
                     if self.next_is_enter(iter) {
                         write!(f, "(")?;
@@ -169,7 +180,7 @@ impl<G: Grammar> Debug for GenParseMatch<G> {
         let iter = self
             .0
             .walk()
-            .filter(|(node, _)| node.grouping() != Grouping::None);
+            .filter(|(_, node, _)| node.grouping() != Grouping::None);
 
         let mut iter = BufferedIter::new(iter);
 

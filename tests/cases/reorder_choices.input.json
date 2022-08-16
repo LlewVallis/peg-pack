@@ -4,7 +4,8 @@
   "start": 0,
   "settings": {
     "characterReplacement": false,
-    "mergeSeries": false
+    "mergeSeries": false,
+    "redundantJunctionElimination": false
   },
   "instructions": [
     {

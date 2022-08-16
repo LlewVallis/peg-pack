@@ -7,10 +7,11 @@ use std::ops::Deref;
 use super::array_vec::ArrayVec;
 use super::grammar::{Expected, Grammar, Label};
 use super::refc::Refc;
+use super::stack::Stack;
 
 pub enum ParseResult<G: Grammar> {
     Matched(Match<G>),
-    Unmatched { scan_distance: usize },
+    Unmatched { scan_distance: usize, work: usize },
 }
 
 impl<G: Grammar> ParseResult<G> {
@@ -35,7 +36,14 @@ impl<G: Grammar> ParseResult<G> {
     pub fn scan_distance(&self) -> usize {
         match self {
             Self::Matched(value) => value.scan_distance(),
-            Self::Unmatched { scan_distance } => *scan_distance,
+            Self::Unmatched { scan_distance, .. } => *scan_distance,
+        }
+    }
+
+    pub fn work(&self) -> usize {
+        match self {
+            ParseResult::Matched(value) => value.work(),
+            ParseResult::Unmatched { work, .. } => *work,
         }
     }
 
@@ -49,8 +57,35 @@ impl<G: Grammar> ParseResult<G> {
     pub fn extend_scan_distance(self, amount: usize) -> Self {
         match self {
             Self::Matched(value) => Self::Matched(value.extend_scan_distance(amount)),
-            Self::Unmatched { scan_distance } => Self::Unmatched {
+            Self::Unmatched {
+                scan_distance,
+                work,
+            } => Self::Unmatched {
                 scan_distance: scan_distance.max(amount),
+                work,
+            },
+        }
+    }
+
+    pub fn with_work(self, amount: usize) -> Self {
+        match self {
+            Self::Matched(value) => Self::Matched(value.with_work(amount)),
+            Self::Unmatched { scan_distance, .. } => Self::Unmatched {
+                work: amount,
+                scan_distance,
+            },
+        }
+    }
+
+    pub fn add_work(self, amount: usize) -> Self {
+        match self {
+            Self::Matched(value) => Self::Matched(value.add_work(amount)),
+            Self::Unmatched {
+                scan_distance,
+                work,
+            } => Self::Unmatched {
+                work: work + amount,
+                scan_distance,
             },
         }
     }
@@ -66,8 +101,12 @@ impl<G: Grammar> ParseResult<G> {
         match self {
             Self::Matched(value) => Self::Unmatched {
                 scan_distance: value.scan_distance(),
+                work: value.work,
             },
-            Self::Unmatched { scan_distance } => Self::Matched(Match::empty(scan_distance)),
+            Self::Unmatched {
+                scan_distance,
+                work,
+            } => Self::Matched(Match::empty(scan_distance, work)),
         }
     }
 
@@ -78,6 +117,7 @@ impl<G: Grammar> ParseResult<G> {
                     Match {
                         grouping: Grouping::Error(expected),
                         scan_distance: value.scan_distance,
+                        work: value.work,
                         distance: value.distance,
                         error_distance: Some(0),
                         children: value.children,
@@ -86,9 +126,10 @@ impl<G: Grammar> ParseResult<G> {
                     Match {
                         grouping: Grouping::Error(expected),
                         scan_distance: value.scan_distance,
+                        work: value.work,
                         distance: value.distance,
                         error_distance: Some(0),
-                        children: ArrayVec::of([value.box_unsimplified()]),
+                        children: ArrayVec::of([(0, value.boxed())]),
                     }
                 };
 
@@ -105,6 +146,7 @@ impl<G: Grammar> ParseResult<G> {
                     Match {
                         grouping: Grouping::Label(label),
                         scan_distance: value.scan_distance,
+                        work: value.work,
                         distance: value.distance,
                         error_distance: value.error_distance,
                         children: value.children,
@@ -113,9 +155,10 @@ impl<G: Grammar> ParseResult<G> {
                     Match {
                         grouping: Grouping::Label(label),
                         scan_distance: value.scan_distance,
+                        work: value.work,
                         distance: value.distance,
                         error_distance: value.error_distance,
-                        children: ArrayVec::of([value.box_unsimplified()]),
+                        children: ArrayVec::of([(0, value.boxed())]),
                     }
                 };
 
@@ -128,24 +171,24 @@ impl<G: Grammar> ParseResult<G> {
 
 const MATCH_CHILDREN: usize = 4;
 
-// If children is non-empty, `scan_distance`, `distance` and `error_distance`
-// can be derived from children
 pub struct Match<G: Grammar> {
-    grouping: Grouping<G::Label, G::Expected>,
     scan_distance: usize,
+    work: usize,
     distance: usize,
     error_distance: Option<usize>,
-    children: ArrayVec<Refc<Self>, MATCH_CHILDREN>,
+    grouping: Grouping<G::Label, G::Expected>,
+    children: ArrayVec<(usize, Refc<Self>), MATCH_CHILDREN>,
 }
 
 impl<G: Grammar> Match<G> {
-    pub fn empty(scan_distance: usize) -> Self {
-        Self::error_free(0, scan_distance)
+    pub fn empty(scan_distance: usize, work: usize) -> Self {
+        Self::error_free(0, scan_distance, work)
     }
 
-    pub fn error_free(distance: usize, scan_distance: usize) -> Self {
+    pub fn error_free(distance: usize, scan_distance: usize, work: usize) -> Self {
         Self {
             scan_distance,
+            work,
             distance,
             grouping: Grouping::None,
             error_distance: None,
@@ -156,6 +199,8 @@ impl<G: Grammar> Match<G> {
     pub fn combine(first: Self, second: Self) -> Self {
         let scan_distance = usize::max(first.scan_distance, first.distance + second.scan_distance);
 
+        let work = first.work + second.work;
+
         let distance = first.distance + second.distance;
 
         let error_distance = first.error_distance.or_else(|| {
@@ -164,13 +209,63 @@ impl<G: Grammar> Match<G> {
                 .map(|distance| first.distance + distance)
         });
 
+        let first_offset = 0;
+        let second_offset = first.distance;
+
+        let merge_grouping = if first.grouping == Grouping::None {
+            Some(second.grouping)
+        } else if second.grouping == Grouping::None {
+            Some(first.grouping)
+        } else {
+            None
+        };
+
+        if let Some(merge_grouping) = merge_grouping {
+            if first.children.len() + second.children.len() <= MATCH_CHILDREN {
+                let children = Self::merge_children(first, second);
+
+                return Self {
+                    grouping: merge_grouping,
+                    scan_distance,
+                    work,
+                    distance,
+                    error_distance,
+                    children,
+                };
+            }
+        }
+
+        let children = [
+            (first_offset, first.boxed()),
+            (second_offset, second.boxed()),
+        ];
+
         Self {
             grouping: Grouping::None,
+            children: ArrayVec::of(children),
             scan_distance,
+            work,
             distance,
             error_distance,
-            children: ArrayVec::of([first.boxed(), second.boxed()]),
         }
+    }
+
+    fn merge_children(first: Self, second: Self) -> ArrayVec<(usize, Refc<Self>), MATCH_CHILDREN> {
+        let mut children = ArrayVec::new();
+
+        for (offset, child) in first.children {
+            unsafe {
+                children.push_unchecked((offset, child));
+            }
+        }
+
+        for (offset, child) in second.children {
+            unsafe {
+                children.push_unchecked((offset + first.distance, child));
+            }
+        }
+
+        children
     }
 
     pub fn extend_scan_distance(mut self, amount: usize) -> Self {
@@ -178,16 +273,17 @@ impl<G: Grammar> Match<G> {
         self
     }
 
-    pub fn boxed(self) -> Refc<Self> {
-        if self.grouping == Grouping::None && self.children.len() == 1 {
-            let target = unsafe { self.children.get_unchecked(0) };
-            return target.clone();
-        }
-
-        self.box_unsimplified()
+    pub fn with_work(mut self, amount: usize) -> Self {
+        self.work = amount;
+        self
     }
 
-    pub fn box_unsimplified(self) -> Refc<Self> {
+    pub fn add_work(mut self, amount: usize) -> Self {
+        self.work += amount;
+        self
+    }
+
+    pub fn boxed(self) -> Refc<Self> {
         Refc::new(self)
     }
 
@@ -195,9 +291,10 @@ impl<G: Grammar> Match<G> {
         Self {
             grouping: Grouping::None,
             scan_distance: boxed.scan_distance,
+            work: boxed.work,
             distance: boxed.distance,
             error_distance: boxed.error_distance,
-            children: ArrayVec::of([boxed.clone()]),
+            children: ArrayVec::of([(0, boxed.clone())]),
         }
     }
 
@@ -209,6 +306,10 @@ impl<G: Grammar> Match<G> {
         self.scan_distance
     }
 
+    pub fn work(&self) -> usize {
+        self.work
+    }
+
     pub fn distance(&self) -> usize {
         self.distance
     }
@@ -217,10 +318,10 @@ impl<G: Grammar> Match<G> {
         self.error_distance
     }
 
-    pub fn walk(&self) -> impl Iterator<Item = (&Self, EnterExit)> {
+    pub fn walk(&self) -> impl Iterator<Item = (usize, &Self, EnterExit)> {
         Walk {
-            initial: false,
-            parents: vec![(self, 0)],
+            initialized: false,
+            parents: Stack::of((0, self, 0)),
         }
     }
 }
@@ -248,34 +349,38 @@ pub enum EnterExit {
 }
 
 struct Walk<'a, G: Grammar> {
-    initial: bool,
-    parents: Vec<(&'a Match<G>, usize)>,
+    initialized: bool,
+    parents: Stack<(usize, &'a Match<G>, usize)>,
 }
 
 impl<'a, G: Grammar> Iterator for Walk<'a, G> {
-    type Item = (&'a Match<G>, EnterExit);
+    type Item = (usize, &'a Match<G>, EnterExit);
 
     fn next(&mut self) -> Option<Self::Item> {
-        if !self.initial {
-            let (node, _) = unsafe { self.parents.first().unwrap_unchecked() };
+        if !self.initialized {
+            let (position, node, _) = unsafe { self.parents.top().unwrap_unchecked() };
 
-            self.initial = true;
-            return Some((node, EnterExit::Enter));
+            self.initialized = true;
+            return Some((*position, node, EnterExit::Enter));
         }
 
-        let (node, child_index) = self.parents.last_mut()?;
+        let (base_position, node, child_index) = self.parents.top_mut()?;
+        let base_position = *base_position;
         let node = *node;
 
         if node.children.len() == *child_index {
             self.parents.pop();
-            return Some((node, EnterExit::Exit));
+            return Some((base_position + node.distance, node, EnterExit::Exit));
         }
 
-        let child = unsafe { node.children.get_unchecked(*child_index).deref() };
+        let (offset, child) = unsafe { node.children.get_unchecked(*child_index) };
+        let child = child.deref();
+
         *child_index += 1;
 
-        self.parents.push((child, 0));
-        Some((child, EnterExit::Enter))
+        let position = base_position + offset;
+        self.parents.push((position, child, 0));
+        Some((position, child, EnterExit::Enter))
     }
 }
 

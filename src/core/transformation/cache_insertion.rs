@@ -1,8 +1,7 @@
 use std::collections::HashSet;
 
 use crate::core::{Instruction, InstructionId, Parser};
-
-const CACHE_COMPLEXITY_THRESHOLD: usize = 32;
+use crate::runtime::{CACHE_WORK, CHOICE_WORK, LABEL_WORK, MARK_ERROR_WORK, MAX_UNCACHED_WORK, NOT_AHEAD_WORK, SEQ_WORK, SERIES_WORK};
 
 impl Parser {
     pub(super) fn insert_cache_points(&mut self) {
@@ -22,10 +21,10 @@ impl Parser {
             }
 
             let mut visited = HashSet::new();
-            let complexity = self.complexity(id, &mut visited);
+            let work = self.work(id, &mut visited);
 
-            if complexity
-                .map(|value| value < CACHE_COMPLEXITY_THRESHOLD)
+            if work
+                .map(|value| value <= MAX_UNCACHED_WORK)
                 .unwrap_or(false)
             {
                 continue;
@@ -43,7 +42,7 @@ impl Parser {
         }
     }
 
-    fn complexity(&self, id: InstructionId, visited: &mut HashSet<InstructionId>) -> Option<usize> {
+    fn work(&self, id: InstructionId, visited: &mut HashSet<InstructionId>) -> Option<usize> {
         if !visited.insert(id) {
             return None;
         }
@@ -64,15 +63,15 @@ impl Parser {
 
         match instruction {
             Instruction::Seq(first, second) | Instruction::Choice(first, second) => {
-                let first = self.complexity(first, visited)?;
-                let second = self.complexity(second, visited)?;
+                let first = self.work(first, visited)?;
+                let second = self.work(second, visited)?;
                 Some(first + second + inherent_complexity)
             }
             Instruction::NotAhead(target)
             | Instruction::Error(target, _)
             | Instruction::Label(target, _)
             | Instruction::Delegate(target) => {
-                let target = self.complexity(target, visited)?;
+                let target = self.work(target, visited)?;
                 Some(target + inherent_complexity)
             }
             Instruction::Cache(_, _) | Instruction::Series(_) => Some(inherent_complexity),
@@ -81,16 +80,14 @@ impl Parser {
 
     fn inherent_complexity(&self, instruction: Instruction) -> usize {
         match instruction {
-            Instruction::Seq(_, _)
-            | Instruction::Choice(_, _)
-            | Instruction::NotAhead(_)
-            | Instruction::Delegate(_) => 4,
-            Instruction::Cache(_, _) => 8,
-            Instruction::Error(_, _) | Instruction::Label(_, _) => 16,
-            Instruction::Series(id) => {
-                let series = &self.series[id];
-                series.classes().len() + 4
-            }
+            Instruction::Seq(_, _) => SEQ_WORK,
+            Instruction::Choice(_, _) => CHOICE_WORK,
+            Instruction::NotAhead(_) => NOT_AHEAD_WORK,
+            Instruction::Delegate(_) => 0,
+            Instruction::Cache(_, _) => CACHE_WORK,
+            Instruction::Error(_, _) => MARK_ERROR_WORK,
+            Instruction::Label(_, _) => LABEL_WORK,
+            Instruction::Series(_) => SERIES_WORK,
         }
     }
 }

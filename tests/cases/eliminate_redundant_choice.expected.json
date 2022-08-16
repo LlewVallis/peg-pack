@@ -1,7 +1,7 @@
 {
   "start": 0,
   "instructions": [
-    { "seq": [1, 1] },
+    { "label": [1, 0] },
     { "series": 0 }
   ],
   "series": [
@@ -10,6 +10,6 @@
       "ranges": []
     }]
   ],
-  "labels": [],
+  "labels": ["foo"],
   "expecteds": []
 }
