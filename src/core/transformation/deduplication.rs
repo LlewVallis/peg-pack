@@ -123,7 +123,11 @@ impl Parser {
             self.deduplicate_component(*successor, components, mappings, canonicals, visited);
         }
 
-        self.deduplicate_instructions(component.instructions.clone(), mappings);
+        self.deduplicate_instructions(
+            start,
+            component.instructions.clone(),
+            mappings
+        );
 
         let component_hash = self.create_canonical_hash(start, component, mappings);
 
@@ -273,12 +277,13 @@ impl Parser {
     /// performing the depth first search
     fn deduplicate_instructions(
         &mut self,
+        start: InstructionId,
         mut unvisited: BTreeSet<InstructionId>,
         mappings: &mut HashMap<InstructionId, InstructionId>,
     ) {
         let mut canonicals = HashMap::new();
 
-        self.canonicalize_instruction(self.start, mappings, &mut canonicals, &mut unvisited);
+        self.canonicalize_instruction(start, mappings, &mut canonicals, &mut unvisited);
     }
 
     fn canonicalize_instruction(
