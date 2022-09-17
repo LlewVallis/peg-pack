@@ -24,9 +24,11 @@ impl Parser {
         self.sort();
 
         for _ in 0..OPT_PASSES {
-            self.normalize(settings);
             self.deduplicate();
+            self.normalize(settings);
         }
+
+        self.deduplicate();
 
         if settings.cache_insertion {
             self.insert_cache_points();

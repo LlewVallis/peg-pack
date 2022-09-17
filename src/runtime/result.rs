@@ -212,27 +212,20 @@ impl<G: Grammar> Match<G> {
         let first_offset = 0;
         let second_offset = first.distance;
 
-        let merge_grouping = if first.grouping == Grouping::None {
-            Some(second.grouping)
-        } else if second.grouping == Grouping::None {
-            Some(first.grouping)
-        } else {
-            None
-        };
+        if first.grouping == Grouping::None
+            && second.grouping == Grouping::None
+            && first.children.len() + second.children.len() <= MATCH_CHILDREN
+        {
+            let children = Self::merge_children(first, second);
 
-        if let Some(merge_grouping) = merge_grouping {
-            if first.children.len() + second.children.len() <= MATCH_CHILDREN {
-                let children = Self::merge_children(first, second);
-
-                return Self {
-                    grouping: merge_grouping,
-                    scan_distance,
-                    work,
-                    distance,
-                    error_distance,
-                    children,
-                };
-            }
+            return Self {
+                grouping: Grouping::None,
+                scan_distance,
+                work,
+                distance,
+                error_distance,
+                children,
+            };
         }
 
         let children = [
