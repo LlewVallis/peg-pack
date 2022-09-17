@@ -1,16 +1,16 @@
 use std::mem;
 use std::mem::MaybeUninit;
 
-use super::{
-    CACHE_WORK, CHOICE_WORK, FINISH_STATE, LABEL_WORK, MARK_ERROR_WORK, MAX_UNCACHED_WORK, NOT_AHEAD_WORK,
-    SEQ_WORK, SERIES_WORK, State,
-};
 use super::cache::Cache;
 use super::grammar::Grammar;
 use super::input::Input;
 use super::result::Match;
 use super::result::ParseResult;
 use super::stack::Stack;
+use super::{
+    State, CACHE_WORK, CHOICE_WORK, FINISH_STATE, LABEL_WORK, MARK_ERROR_WORK, MAX_UNCACHED_WORK,
+    NOT_AHEAD_WORK, SEQ_WORK, SERIES_WORK,
+};
 
 pub struct Context<'a, I: Input + ?Sized, G: Grammar> {
     input: &'a I,
@@ -209,6 +209,26 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         }
 
         self.pop_state();
+    }
+
+    pub unsafe fn state_first_choice_start<const FIRST: State, const CONTINUATION: State>(
+        &mut self,
+    ) {
+        *self.state_mut() = CONTINUATION;
+        self.push_state(FIRST);
+    }
+
+    pub unsafe fn state_first_choice_middle<const SECOND: State>(&mut self) {
+        let result = self.take_result();
+
+        if result.is_match() {
+            let result = result.add_work(CHOICE_WORK);
+            self.set_result(result);
+            self.pop_state();
+        } else {
+            self.position -= result.distance();
+            *self.state_mut() = SECOND;
+        }
     }
 
     pub unsafe fn state_not_ahead_start<const TARGET: State, const CONTINUATION: State>(&mut self) {

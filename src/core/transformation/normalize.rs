@@ -20,7 +20,7 @@ macro_rules! passes {
 }
 
 const STAGES: &[&[Pass]] = &[
-    passes!(resolve_delegate),
+    passes!(resolve_delegate, lower_to_first_choice),
     passes!(
         replace_by_character,
         eliminate_redundant_seqs,
@@ -29,7 +29,11 @@ const STAGES: &[&[Pass]] = &[
         concatenate_series,
         merge_series,
     ),
-    passes!(normalize_seq_order, normalize_choice_order),
+    passes!(
+        normalize_seq_order,
+        normalize_choice_order,
+        normalize_first_choice_order
+    ),
 ];
 
 struct State<'a> {
@@ -158,6 +162,22 @@ impl<'a> State<'a> {
         Some(target)
     }
 
+    fn lower_to_first_choice(
+        &mut self,
+        _id: InstructionId,
+        instruction: Instruction,
+    ) -> Option<Instruction> {
+        let (first_id, _, _, second) = self.as_choice_like(instruction)?;
+        let (_, second_first, second_second_id, _) = self.as_seq(second)?;
+        let (second_first_target_id, _) = self.as_not_ahead(second_first)?;
+
+        if first_id == second_first_target_id {
+            return Some(Instruction::FirstChoice(first_id, second_second_id));
+        }
+
+        None
+    }
+
     fn concatenate_series(
         &mut self,
         _id: InstructionId,
@@ -185,7 +205,7 @@ impl<'a> State<'a> {
             return None;
         }
 
-        let (_, first, _, second) = self.as_choice(instruction)?;
+        let (_, first, _, second) = self.as_choice_like(instruction)?;
         let (_, first) = self.as_series(first)?;
         let (_, second) = self.as_series(second)?;
 
@@ -266,13 +286,19 @@ impl<'a> State<'a> {
         if !self.settings.redundant_junction_elimination {
             return None;
         }
-        
-        let (left_id, left, right_id, right) = self.as_choice(instruction)?;
+
+        let (left_id, left, right_id, right) = self.as_choice_like(instruction)?;
 
         let left_char = self.characters[&left_id];
         let right_char = self.characters[&right_id];
 
-        if !left_char.fallible && !left_char.error_prone {
+        let right_reachable = match instruction {
+            Instruction::Choice(_, _) => left_char.fallible || left_char.error_prone,
+            Instruction::FirstChoice(_, _) => left_char.fallible,
+            _ => unreachable!(),
+        };
+
+        if !right_reachable {
             return Some(left);
         }
 
@@ -355,6 +381,29 @@ impl<'a> State<'a> {
         Some(Instruction::Choice(first, new_junction))
     }
 
+    fn normalize_first_choice_order(
+        &mut self,
+        id: InstructionId,
+        instruction: Instruction,
+    ) -> Option<Instruction> {
+        let (_, old_junction_instruction, third, _) = self.as_first_choice(instruction)?;
+        let (first, first_instruction, second, second_instruction) =
+            self.as_first_choice(old_junction_instruction)?;
+
+        if let Instruction::FirstChoice(_, _) = first_instruction {
+            return None;
+        }
+
+        if let Instruction::FirstChoice(_, _) = second_instruction {
+            return None;
+        }
+
+        let debug_symbol = self.parser.debug_symbols[&id].clone();
+        let new_junction = self.insert(Instruction::FirstChoice(second, third), debug_symbol, [id]);
+
+        Some(Instruction::FirstChoice(first, new_junction))
+    }
+
     fn as_seq(
         &self,
         instruction: Instruction,
@@ -376,6 +425,36 @@ impl<'a> State<'a> {
     ) -> Option<(InstructionId, Instruction, InstructionId, Instruction)> {
         match instruction {
             Instruction::Choice(first, second) => Some((
+                first,
+                self.parser.instructions[first],
+                second,
+                self.parser.instructions[second],
+            )),
+            _ => None,
+        }
+    }
+
+    fn as_first_choice(
+        &self,
+        instruction: Instruction,
+    ) -> Option<(InstructionId, Instruction, InstructionId, Instruction)> {
+        match instruction {
+            Instruction::FirstChoice(first, second) => Some((
+                first,
+                self.parser.instructions[first],
+                second,
+                self.parser.instructions[second],
+            )),
+            _ => None,
+        }
+    }
+
+    fn as_choice_like(
+        &self,
+        instruction: Instruction,
+    ) -> Option<(InstructionId, Instruction, InstructionId, Instruction)> {
+        match instruction {
+            Instruction::Choice(first, second) | Instruction::FirstChoice(first, second) => Some((
                 first,
                 self.parser.instructions[first],
                 second,

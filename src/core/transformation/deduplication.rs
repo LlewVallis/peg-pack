@@ -262,6 +262,7 @@ impl Parser {
             }
             Instruction::Seq(_, _)
             | Instruction::Choice(_, _)
+            | Instruction::FirstChoice(_, _)
             | Instruction::NotAhead(_)
             | Instruction::Delegate(_) => {}
         }

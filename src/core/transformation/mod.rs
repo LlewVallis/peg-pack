@@ -12,6 +12,8 @@ mod normalize;
 mod sort;
 mod trim;
 
+const OPT_PASSES: usize = 3;
+
 impl Parser {
     /// Transform and optimize the parser, cannot be run on an ill-formed grammar
     pub(super) fn transform(&mut self, settings: CompilerSettings) {
@@ -21,9 +23,10 @@ impl Parser {
         self.trim();
         self.sort();
 
-        self.normalize(settings);
-
-        self.deduplicate();
+        for _ in 0..OPT_PASSES {
+            self.normalize(settings);
+            self.deduplicate();
+        }
 
         if settings.cache_insertion {
             self.insert_cache_points();

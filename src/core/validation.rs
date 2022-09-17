@@ -46,9 +46,16 @@ impl Parser {
                 first || second
             }
             Instruction::Choice(first, second) => {
-                let first_fallible = characters[&first].fallible;
+                let first_character = characters[&first];
+                let second_executable = first_character.fallible || first_character.error_prone;
                 let first = self.can_reach(base, first, visited, characters);
-                let second = first_fallible && self.can_reach(base, second, visited, characters);
+                let second = second_executable && self.can_reach(base, second, visited, characters);
+                first || second
+            }
+            Instruction::FirstChoice(first, second) => {
+                let second_executable = characters[&first].fallible;
+                let first = self.can_reach(base, first, visited, characters);
+                let second = second_executable && self.can_reach(base, second, visited, characters);
                 first || second
             }
             Instruction::NotAhead(target)

@@ -30,7 +30,9 @@ impl Parser {
             result.push_str(&header);
 
             match instruction {
-                Instruction::Seq(first, second) | Instruction::Choice(first, second) => {
+                Instruction::Seq(first, second)
+                | Instruction::Choice(first, second)
+                | Instruction::FirstChoice(first, second) => {
                     result.push_str(&format!("    i{}:w -> i{};\n", id.0, first.0));
                     result.push_str(&format!("    i{}:e -> i{};\n", id.0, second.0));
                 }
@@ -52,6 +54,7 @@ impl Parser {
         match instruction {
             Instruction::Seq(_, _)
             | Instruction::Choice(_, _)
+            | Instruction::FirstChoice(_, _)
             | Instruction::NotAhead(_)
             | Instruction::Error(_, _)
             | Instruction::Label(_, _)
@@ -65,6 +68,7 @@ impl Parser {
         let mut name = match instruction {
             Instruction::Seq(_, _) => String::from("Sequence"),
             Instruction::Choice(_, _) => String::from("Choice"),
+            Instruction::FirstChoice(_, _) => String::from("First choice"),
             Instruction::NotAhead(_) => String::from("Not ahead"),
             Instruction::Error(_, expected) => {
                 let expected = &self.expecteds[expected];

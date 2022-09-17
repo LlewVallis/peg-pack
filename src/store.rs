@@ -61,6 +61,10 @@ impl<K: StoreKey, V> Store<K, V> {
     pub fn iter_mut(&mut self) -> impl DoubleEndedIterator<Item = (K, &mut V)> {
         self.map.iter_mut().map(|(k, v)| (K::from_usize(*k), v))
     }
+
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
 }
 
 impl<K: StoreKey, V> Index<K> for Store<K, V> {

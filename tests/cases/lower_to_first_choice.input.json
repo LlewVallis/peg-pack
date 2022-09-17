@@ -1,0 +1,34 @@
+{
+  "version": 0,
+  "status": "success",
+  "start": 0,
+  "instructions": [
+    {
+      "name": "choice",
+      "first": 1,
+      "second": 3
+    },
+    {
+      "name": "error",
+      "target": 2,
+      "expected": 2
+    },
+    {
+      "name": "series",
+      "classes": [{ "negated": false, "ranges": [[0, 0]] }]
+    },
+    {
+      "name": "seq",
+      "first": 4,
+      "second": 5
+    },
+    {
+      "name": "notAhead",
+      "target": 1
+    },
+    {
+      "name": "series",
+      "classes": [{ "negated": false, "ranges": [[1, 1]] }]
+    }
+  ]
+}

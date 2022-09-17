@@ -116,7 +116,18 @@ impl Parser {
             }
             Instruction::Choice(first, second) => {
                 self.expected_at(first, result, characters, visited);
-                self.expected_at(second, result, characters, visited);
+
+                let first_character = characters[&first];
+                if first_character.fallible || first_character.error_prone {
+                    self.expected_at(second, result, characters, visited);
+                }
+            }
+            Instruction::FirstChoice(first, second) => {
+                self.expected_at(first, result, characters, visited);
+
+                if characters[&first].fallible {
+                    self.expected_at(second, result, characters, visited);
+                }
             }
             Instruction::Error(target, _)
             | Instruction::Cache(target, _)

@@ -200,6 +200,7 @@ impl StoreKey for LabelId {
 enum Instruction {
     Seq(InstructionId, InstructionId),
     Choice(InstructionId, InstructionId),
+    FirstChoice(InstructionId, InstructionId),
     NotAhead(InstructionId),
     Error(InstructionId, ExpectedId),
     Label(InstructionId, LabelId),
@@ -211,9 +212,9 @@ enum Instruction {
 impl Instruction {
     fn successors(&self) -> impl DoubleEndedIterator<Item = InstructionId> {
         let (first, second) = match *self {
-            Instruction::Seq(first, second) | Instruction::Choice(first, second) => {
-                (Some(first), Some(second))
-            }
+            Instruction::Seq(first, second)
+            | Instruction::Choice(first, second)
+            | Instruction::FirstChoice(first, second) => (Some(first), Some(second)),
             Instruction::NotAhead(target)
             | Instruction::Error(target, _)
             | Instruction::Label(target, _)
@@ -230,6 +231,9 @@ impl Instruction {
             Instruction::Seq(first, second) => Instruction::Seq(mapper(first), mapper(second)),
             Instruction::Choice(first, second) => {
                 Instruction::Choice(mapper(first), mapper(second))
+            }
+            Instruction::FirstChoice(first, second) => {
+                Instruction::FirstChoice(mapper(first), mapper(second))
             }
             Instruction::NotAhead(target) => Instruction::NotAhead(mapper(target)),
             Instruction::Error(target, expected) => Instruction::Error(mapper(target), expected),

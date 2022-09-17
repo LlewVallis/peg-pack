@@ -4,9 +4,7 @@ pub struct Stack<T> {
 
 impl<T> Stack<T> {
     pub fn new() -> Self {
-        Self {
-            values: Vec::new()
-        }
+        Self { values: Vec::new() }
     }
 
     pub fn of(value: T) -> Self {

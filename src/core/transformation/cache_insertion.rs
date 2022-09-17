@@ -1,7 +1,10 @@
 use std::collections::HashSet;
 
 use crate::core::{Instruction, InstructionId, Parser};
-use crate::runtime::{CACHE_WORK, CHOICE_WORK, LABEL_WORK, MARK_ERROR_WORK, MAX_UNCACHED_WORK, NOT_AHEAD_WORK, SEQ_WORK, SERIES_WORK};
+use crate::runtime::{
+    CACHE_WORK, CHOICE_WORK, LABEL_WORK, MARK_ERROR_WORK, MAX_UNCACHED_WORK, NOT_AHEAD_WORK,
+    SEQ_WORK, SERIES_WORK,
+};
 
 impl Parser {
     pub(super) fn insert_cache_points(&mut self) {
@@ -62,7 +65,9 @@ impl Parser {
         let inherent_complexity = self.inherent_complexity(instruction);
 
         match instruction {
-            Instruction::Seq(first, second) | Instruction::Choice(first, second) => {
+            Instruction::Seq(first, second)
+            | Instruction::Choice(first, second)
+            | Instruction::FirstChoice(first, second) => {
                 let first = self.work(first, visited)?;
                 let second = self.work(second, visited)?;
                 Some(first + second + inherent_complexity)
@@ -81,7 +86,7 @@ impl Parser {
     fn inherent_complexity(&self, instruction: Instruction) -> usize {
         match instruction {
             Instruction::Seq(_, _) => SEQ_WORK,
-            Instruction::Choice(_, _) => CHOICE_WORK,
+            Instruction::Choice(_, _) | Instruction::FirstChoice(_, _) => CHOICE_WORK,
             Instruction::NotAhead(_) => NOT_AHEAD_WORK,
             Instruction::Delegate(_) => 0,
             Instruction::Cache(_, _) => CACHE_WORK,

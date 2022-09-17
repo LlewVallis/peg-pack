@@ -33,6 +33,9 @@ impl Parser {
                 Instruction::Choice(first, second) => {
                     self.characterize_choice(first, second, states)
                 }
+                Instruction::FirstChoice(first, second) => {
+                    self.characterize_first_choice(first, second, states)
+                }
                 Instruction::NotAhead(target) => self.characterize_not_ahead(target, states),
                 Instruction::Error(target, _) => self.characterize_error(target, states),
                 Instruction::Label(target, _) => self.characterize_label(target, states),
@@ -74,6 +77,26 @@ impl Parser {
         let second = states[second];
 
         let second_executable = first.fallible || first.error_prone;
+
+        Character {
+            transparent: first.transparent || second_executable && second.transparent,
+            antitransparent: first.antitransparent || second_executable && second.antitransparent,
+            fallible: first.fallible && second.fallible,
+            label_prone: first.label_prone || second_executable && second.label_prone,
+            error_prone: first.error_prone || second_executable && second.error_prone,
+        }
+    }
+
+    fn characterize_first_choice(
+        &self,
+        first: InstructionId,
+        second: InstructionId,
+        states: &FixedPointStates<Character>,
+    ) -> Character {
+        let first = states[first];
+        let second = states[second];
+
+        let second_executable = first.fallible;
 
         Character {
             transparent: first.transparent || second_executable && second.transparent,

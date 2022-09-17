@@ -1,0 +1,34 @@
+{
+  "start": 0,
+  "instructions": [
+    {
+      "firstChoice": [1, 3]
+    },
+    {
+      "error": [2, 0]
+    },
+    {
+      "series": 0
+    },
+    {
+      "series": 1
+    }
+  ],
+  "labels": [],
+  "series": [
+    [{
+      "negated": false,
+      "ranges": [[0, 0]]
+    }],
+    [{
+      "negated": false,
+      "ranges": [[1, 1]]
+    }]
+  ],
+  "expecteds": [
+    {
+      "labels": [],
+      "literals": [[0]]
+    }
+  ]
+}

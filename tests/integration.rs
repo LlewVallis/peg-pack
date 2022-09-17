@@ -58,6 +58,7 @@ cases!(
     character_replacement_unreachable_annotations,
     eliminate_redundant_seq,
     eliminate_redundant_choice,
+    lower_to_first_choice
 );
 
 #[derive(Deserialize)]
