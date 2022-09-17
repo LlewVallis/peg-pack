@@ -1,9 +1,9 @@
 {
   "start": 0,
   "instructions": [
-    { "choice": [1, 2] },
+    { "firstChoice": [1, 2] },
     { "series": 0 },
-    { "choice": [1, 1] }
+    { "firstChoice": [1, 1] }
   ],
   "series": [
     []

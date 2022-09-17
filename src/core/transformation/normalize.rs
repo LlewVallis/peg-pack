@@ -20,11 +20,12 @@ macro_rules! passes {
 }
 
 const STAGES: &[&[Pass]] = &[
-    passes!(resolve_delegate, lower_to_first_choice),
+    passes!(resolve_delegate, lower_to_first_choice, lower_to_first_choice_without_seq),
     passes!(
         replace_by_character,
         eliminate_redundant_seqs,
         eliminate_redundant_choices,
+        translate_unnecessary_non_first_choice,
         eliminate_double_not_aheads,
         concatenate_series,
         merge_series,
@@ -178,6 +179,25 @@ impl<'a> State<'a> {
         None
     }
 
+    fn lower_to_first_choice_without_seq(
+        &mut self,
+        id: InstructionId,
+        instruction: Instruction,
+    ) -> Option<Instruction> {
+        let (first_id, _, _, second) = self.as_choice_like(instruction)?;
+        let (second_target_id, _) = self.as_not_ahead(second)?;
+
+        if first_id == second_target_id {
+            let empty_series_id = self.parser.series.insert(Series::empty());
+            let debug_symbol = self.parser.debug_symbols[&id].clone();
+            let empty_id = self.insert(Instruction::Series(empty_series_id), debug_symbol, [id]);
+
+            return Some(Instruction::FirstChoice(first_id, empty_id));
+        }
+
+        None
+    }
+
     fn concatenate_series(
         &mut self,
         _id: InstructionId,
@@ -308,6 +328,20 @@ impl<'a> State<'a> {
 
         if !right_char.possible() {
             return Some(left);
+        }
+
+        None
+    }
+
+    fn translate_unnecessary_non_first_choice(
+        &mut self,
+        _id: InstructionId,
+        instruction: Instruction,
+    ) -> Option<Instruction> {
+        let (left_id, _, right_id, _) = self.as_choice(instruction)?;
+
+        if !self.characters[&left_id].error_prone {
+            return Some(Instruction::FirstChoice(left_id, right_id));
         }
 
         None

@@ -2,7 +2,7 @@
   "start": 0,
   "instructions": [
     {
-      "choice": [
+      "firstChoice": [
         1,
         2
       ]
