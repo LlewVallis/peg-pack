@@ -45,7 +45,7 @@ impl Parser {
         }
     }
 
-    fn work(&self, id: InstructionId, visited: &mut HashSet<InstructionId>) -> Option<usize> {
+    fn work(&self, id: InstructionId, visited: &mut HashSet<InstructionId>) -> Option<u32> {
         if !visited.insert(id) {
             return None;
         }
@@ -60,7 +60,7 @@ impl Parser {
         &self,
         id: InstructionId,
         visited: &mut HashSet<InstructionId>,
-    ) -> Option<usize> {
+    ) -> Option<u32> {
         let instruction = self.instructions[id];
         let inherent_complexity = self.inherent_complexity(instruction);
 
@@ -83,7 +83,7 @@ impl Parser {
         }
     }
 
-    fn inherent_complexity(&self, instruction: Instruction) -> usize {
+    fn inherent_complexity(&self, instruction: Instruction) -> u32 {
         match instruction {
             Instruction::Seq(_, _) => SEQ_WORK,
             Instruction::Choice(_, _) | Instruction::FirstChoice(_, _) => CHOICE_WORK,

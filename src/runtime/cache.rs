@@ -1,25 +1,30 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use super::refc::Refc;
+use super::Grammar;
 use super::{Match, ParseResult};
 
-use super::Grammar;
-
 pub struct Cache<G: Grammar> {
-    mappings: HashMap<Key, Entry<G>>,
+    mappings: Box<[BTreeMap<u32, Entry<G>>]>,
 }
 
 impl<G: Grammar> Cache<G> {
-    pub fn new() -> Self {
+    pub fn new(grammar: &G) -> Self {
+        let mut mappings = Vec::with_capacity(grammar.cache_slots());
+
+        for _ in 0..grammar.cache_slots() {
+            mappings.push(BTreeMap::new());
+        }
+
         Self {
-            mappings: HashMap::new(),
+            mappings: mappings.into_boxed_slice(),
         }
     }
 
-    pub fn get(&self, slot: usize, position: usize) -> Option<ParseResult<G>> {
-        let key = Key { slot, position };
+    pub fn get(&self, slot: u32, position: u32) -> Option<ParseResult<G>> {
+        let slot_mappings = unsafe { self.mappings.get_unchecked(slot as usize) };
 
-        match self.mappings.get(&key)? {
+        match slot_mappings.get(&position)? {
             Entry::Matched(value) => {
                 let value = Match::unboxed(value);
                 Some(ParseResult::Matched(value))
@@ -34,14 +39,7 @@ impl<G: Grammar> Cache<G> {
         }
     }
 
-    pub fn insert(
-        &mut self,
-        slot: usize,
-        position: usize,
-        result: ParseResult<G>,
-    ) -> ParseResult<G> {
-        let key = Key { slot, position };
-
+    pub fn insert(&mut self, slot: u32, position: u32, result: ParseResult<G>) -> ParseResult<G> {
         let (insertion, result) = match result {
             ParseResult::Matched(value) => {
                 let boxed = Match::boxed(value);
@@ -60,18 +58,14 @@ impl<G: Grammar> Cache<G> {
             }
         };
 
-        self.mappings.insert(key, insertion);
+        let slot_mappings = unsafe { self.mappings.get_unchecked_mut(slot as usize) };
+        slot_mappings.insert(position, insertion);
+
         result
     }
 }
 
-#[derive(Hash, Eq, PartialEq)]
-struct Key {
-    slot: usize,
-    position: usize,
-}
-
 enum Entry<G: Grammar> {
     Matched(Refc<Match<G>>),
-    Unmatched { scan_distance: usize, work: usize },
+    Unmatched { scan_distance: u32, work: u32 },
 }

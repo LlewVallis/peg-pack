@@ -123,11 +123,7 @@ impl Parser {
             self.deduplicate_component(*successor, components, mappings, canonicals, visited);
         }
 
-        self.deduplicate_instructions(
-            start,
-            component.instructions.clone(),
-            mappings
-        );
+        self.deduplicate_instructions(start, component.instructions.clone(), mappings);
 
         let component_hash = self.create_canonical_hash(start, component, mappings);
 

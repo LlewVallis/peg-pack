@@ -7,7 +7,7 @@ pub struct Refc<T> {
 }
 
 struct RefcBox<T> {
-    referents: Cell<usize>,
+    referents: Cell<u32>,
     value: T,
 }
 
@@ -23,7 +23,7 @@ impl<T> Refc<T> {
         Self { inner }
     }
 
-    fn referents(&self) -> &Cell<usize> {
+    fn referents(&self) -> &Cell<u32> {
         unsafe { &self.inner.as_ref().referents }
     }
 }
@@ -31,12 +31,14 @@ impl<T> Refc<T> {
 impl<T> Drop for Refc<T> {
     fn drop(&mut self) {
         let referents = self.referents();
-        let count = referents.replace(referents.get() - 1);
+        let new_count = unsafe { referents.get().checked_sub(1).unwrap_unchecked() };
 
-        if count == 0 {
+        if new_count == 0 {
             unsafe {
                 Box::from_raw(self.inner.as_ptr());
             }
+        } else {
+            referents.set(new_count)
         }
     }
 }
@@ -52,7 +54,8 @@ impl<T> Deref for Refc<T> {
 impl<T> Clone for Refc<T> {
     fn clone(&self) -> Self {
         let referents = self.referents();
-        referents.set(referents.get() + 1);
+        let new_count = unsafe { referents.get().checked_add(1).unwrap_unchecked() };
+        referents.set(new_count);
 
         Self { inner: self.inner }
     }

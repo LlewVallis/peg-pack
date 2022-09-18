@@ -15,7 +15,7 @@ use super::{
 pub struct Context<'a, I: Input + ?Sized, G: Grammar> {
     input: &'a I,
     grammar: &'a G,
-    position: usize,
+    position: u32,
     state_stack: Stack<State>,
     result_stack: Stack<MaybeUninit<ParseResult<G>>>,
     cache: Cache<G>,
@@ -47,7 +47,7 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
             position: 0,
             state_stack: states,
             result_stack: Stack::of(MaybeUninit::uninit()),
-            cache: Cache::new(),
+            cache: Cache::new(grammar),
         }
     }
 
@@ -126,7 +126,7 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
                 self.position -= first.distance();
 
                 let scan_distance =
-                    usize::max(first.scan_distance(), first.distance() + scan_distance);
+                    u32::max(first.scan_distance(), first.distance() + scan_distance);
 
                 let work = work + first.work() + SEQ_WORK;
                 self.set_result(ParseResult::Unmatched {
@@ -271,7 +271,7 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
 
     pub unsafe fn state_cache_start<const TARGET: State, const CONTINUATION: State>(
         &mut self,
-        slot: usize,
+        slot: u32,
     ) {
         if let Some(result) = self.cache.get(slot, self.position) {
             self.position += result.distance();
@@ -284,7 +284,7 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         self.push_state(TARGET);
     }
 
-    pub unsafe fn state_cache_end(&mut self, slot: usize) {
+    pub unsafe fn state_cache_end(&mut self, slot: u32) {
         if self.result().work() > MAX_UNCACHED_WORK {
             let result = self.take_result().with_work(CACHE_WORK);
             let position = self.position - result.distance();
@@ -299,7 +299,7 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         *self.state_mut() = TARGET;
     }
 
-    pub unsafe fn state_series(&mut self, matcher: impl FnOnce(&I, usize) -> (bool, usize)) {
+    pub unsafe fn state_series(&mut self, matcher: impl FnOnce(&I, u32) -> (bool, u32)) {
         let (matched, length) = matcher(self.input, self.position);
 
         if matched {

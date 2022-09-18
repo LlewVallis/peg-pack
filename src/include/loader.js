@@ -304,7 +304,12 @@ function repOne(rule, separator = this.empty) {
 }
 
 function rep(rule, separator = this.empty) {
-    return this.opt(this.repOne(rule, separator));
+    if (separator === this.empty) {
+        const result = this.anonymize(() => this.opt(this.seq(rule, result)));
+        return result;
+    } else {
+        return this.opt(this.repOne(rule, separator));
+    }
 }
 
 function untilOne(...syncs) {

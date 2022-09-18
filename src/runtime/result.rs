@@ -11,7 +11,7 @@ use super::stack::Stack;
 
 pub enum ParseResult<G: Grammar> {
     Matched(Match<G>),
-    Unmatched { scan_distance: usize, work: usize },
+    Unmatched { scan_distance: u32, work: u32 },
 }
 
 impl<G: Grammar> ParseResult<G> {
@@ -22,7 +22,7 @@ impl<G: Grammar> ParseResult<G> {
         }
     }
 
-    pub fn error_distance(&self) -> Option<usize> {
+    pub fn error_distance(&self) -> Option<u32> {
         match self {
             ParseResult::Matched(value) => value.error_distance,
             ParseResult::Unmatched { .. } => Some(0),
@@ -33,28 +33,28 @@ impl<G: Grammar> ParseResult<G> {
         self.error_distance().is_none()
     }
 
-    pub fn scan_distance(&self) -> usize {
+    pub fn scan_distance(&self) -> u32 {
         match self {
             Self::Matched(value) => value.scan_distance(),
             Self::Unmatched { scan_distance, .. } => *scan_distance,
         }
     }
 
-    pub fn work(&self) -> usize {
+    pub fn work(&self) -> u32 {
         match self {
             ParseResult::Matched(value) => value.work(),
             ParseResult::Unmatched { work, .. } => *work,
         }
     }
 
-    pub fn distance(&self) -> usize {
+    pub fn distance(&self) -> u32 {
         match self {
             Self::Matched(value) => value.distance(),
             Self::Unmatched { .. } => 0,
         }
     }
 
-    pub fn extend_scan_distance(self, amount: usize) -> Self {
+    pub fn extend_scan_distance(self, amount: u32) -> Self {
         match self {
             Self::Matched(value) => Self::Matched(value.extend_scan_distance(amount)),
             Self::Unmatched {
@@ -67,7 +67,7 @@ impl<G: Grammar> ParseResult<G> {
         }
     }
 
-    pub fn with_work(self, amount: usize) -> Self {
+    pub fn with_work(self, amount: u32) -> Self {
         match self {
             Self::Matched(value) => Self::Matched(value.with_work(amount)),
             Self::Unmatched { scan_distance, .. } => Self::Unmatched {
@@ -77,7 +77,7 @@ impl<G: Grammar> ParseResult<G> {
         }
     }
 
-    pub fn add_work(self, amount: usize) -> Self {
+    pub fn add_work(self, amount: u32) -> Self {
         match self {
             Self::Matched(value) => Self::Matched(value.add_work(amount)),
             Self::Unmatched {
@@ -172,20 +172,20 @@ impl<G: Grammar> ParseResult<G> {
 const MATCH_CHILDREN: usize = 4;
 
 pub struct Match<G: Grammar> {
-    scan_distance: usize,
-    work: usize,
-    distance: usize,
-    error_distance: Option<usize>,
+    scan_distance: u32,
+    work: u32,
+    distance: u32,
+    error_distance: Option<u32>,
     grouping: Grouping<G::Label, G::Expected>,
-    children: ArrayVec<(usize, Refc<Self>), MATCH_CHILDREN>,
+    children: ArrayVec<(u32, Refc<Self>), MATCH_CHILDREN>,
 }
 
 impl<G: Grammar> Match<G> {
-    pub fn empty(scan_distance: usize, work: usize) -> Self {
+    pub fn empty(scan_distance: u32, work: u32) -> Self {
         Self::error_free(0, scan_distance, work)
     }
 
-    pub fn error_free(distance: usize, scan_distance: usize, work: usize) -> Self {
+    pub fn error_free(distance: u32, scan_distance: u32, work: u32) -> Self {
         Self {
             scan_distance,
             work,
@@ -197,7 +197,7 @@ impl<G: Grammar> Match<G> {
     }
 
     pub fn combine(first: Self, second: Self) -> Self {
-        let scan_distance = usize::max(first.scan_distance, first.distance + second.scan_distance);
+        let scan_distance = u32::max(first.scan_distance, first.distance + second.scan_distance);
 
         let work = first.work + second.work;
 
@@ -243,7 +243,7 @@ impl<G: Grammar> Match<G> {
         }
     }
 
-    fn merge_children(first: Self, second: Self) -> ArrayVec<(usize, Refc<Self>), MATCH_CHILDREN> {
+    fn merge_children(first: Self, second: Self) -> ArrayVec<(u32, Refc<Self>), MATCH_CHILDREN> {
         let mut children = ArrayVec::new();
 
         for (offset, child) in first.children {
@@ -261,17 +261,17 @@ impl<G: Grammar> Match<G> {
         children
     }
 
-    pub fn extend_scan_distance(mut self, amount: usize) -> Self {
+    pub fn extend_scan_distance(mut self, amount: u32) -> Self {
         self.scan_distance = self.scan_distance.max(amount);
         self
     }
 
-    pub fn with_work(mut self, amount: usize) -> Self {
+    pub fn with_work(mut self, amount: u32) -> Self {
         self.work = amount;
         self
     }
 
-    pub fn add_work(mut self, amount: usize) -> Self {
+    pub fn add_work(mut self, amount: u32) -> Self {
         self.work += amount;
         self
     }
@@ -295,23 +295,23 @@ impl<G: Grammar> Match<G> {
         self.grouping
     }
 
-    pub fn scan_distance(&self) -> usize {
+    pub fn scan_distance(&self) -> u32 {
         self.scan_distance
     }
 
-    pub fn work(&self) -> usize {
+    pub fn work(&self) -> u32 {
         self.work
     }
 
-    pub fn distance(&self) -> usize {
+    pub fn distance(&self) -> u32 {
         self.distance
     }
 
-    pub fn error_distance(&self) -> Option<usize> {
+    pub fn error_distance(&self) -> Option<u32> {
         self.error_distance
     }
 
-    pub fn walk(&self) -> impl Iterator<Item = (usize, &Self, EnterExit)> {
+    pub fn walk(&self) -> impl Iterator<Item = (u32, &Self, EnterExit)> {
         Walk {
             initialized: false,
             parents: Stack::of((0, self, 0)),
@@ -343,11 +343,11 @@ pub enum EnterExit {
 
 struct Walk<'a, G: Grammar> {
     initialized: bool,
-    parents: Stack<(usize, &'a Match<G>, usize)>,
+    parents: Stack<(u32, &'a Match<G>, u8)>,
 }
 
 impl<'a, G: Grammar> Iterator for Walk<'a, G> {
-    type Item = (usize, &'a Match<G>, EnterExit);
+    type Item = (u32, &'a Match<G>, EnterExit);
 
     fn next(&mut self) -> Option<Self::Item> {
         if !self.initialized {
@@ -361,12 +361,12 @@ impl<'a, G: Grammar> Iterator for Walk<'a, G> {
         let base_position = *base_position;
         let node = *node;
 
-        if node.children.len() == *child_index {
+        if node.children.len() == *child_index as usize {
             self.parents.pop();
             return Some((base_position + node.distance, node, EnterExit::Exit));
         }
 
-        let (offset, child) = unsafe { node.children.get_unchecked(*child_index) };
+        let (offset, child) = unsafe { node.children.get_unchecked(*child_index as usize) };
         let child = child.deref();
 
         *child_index += 1;

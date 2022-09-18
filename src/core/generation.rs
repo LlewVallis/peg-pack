@@ -365,7 +365,7 @@ impl Parser {
 
     fn generate_series_function(&self, codegen: &mut Codegen, id: usize, series: &Series) {
         let signature = format!(
-            "fn series_{}<I: Input + ?Sized>(input: &I, position: usize) -> (bool, usize)",
+            "fn series_{}<I: Input + ?Sized>(input: &I, position: u32) -> (bool, u32)",
             id
         );
 
@@ -456,7 +456,22 @@ impl Parser {
     }
 
     fn generate_macro(&self, codegen: &mut Codegen) {
-        codegen.line(&format!("generate!(STATE_{}_0, dispatch);", self.start().0));
+        let max_cache_id = self
+            .instructions()
+            .flat_map(|instruction| match instruction.1 {
+                Instruction::Cache(_, id) => Some(id.unwrap()),
+                _ => None,
+            })
+            .max()
+            .unwrap_or(0);
+
+        let cache_slots = max_cache_id + 1;
+
+        codegen.line(&format!(
+            "generate!(STATE_{}_0, {}, dispatch);",
+            self.start().0,
+            cache_slots
+        ));
     }
 
     fn states(&self) -> impl Iterator<Item = State> {

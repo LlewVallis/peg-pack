@@ -20,19 +20,19 @@ mod refc;
 mod result;
 mod stack;
 
-pub(super) const SERIES_WORK: usize = 1;
-pub(super) const CACHE_WORK: usize = 25;
-pub(super) const LABEL_WORK: usize = 50;
-pub(super) const MARK_ERROR_WORK: usize = 50;
-pub(super) const NOT_AHEAD_WORK: usize = 1;
-pub(super) const CHOICE_WORK: usize = 1;
-pub(super) const SEQ_WORK: usize = 1;
-pub(super) const MAX_UNCACHED_WORK: usize = 250;
+pub(super) const SERIES_WORK: u32 = 1;
+pub(super) const CACHE_WORK: u32 = 25;
+pub(super) const LABEL_WORK: u32 = 50;
+pub(super) const MARK_ERROR_WORK: u32 = 50;
+pub(super) const NOT_AHEAD_WORK: u32 = 1;
+pub(super) const CHOICE_WORK: u32 = 1;
+pub(super) const SEQ_WORK: u32 = 1;
+pub(super) const MAX_UNCACHED_WORK: u32 = 250;
 
 pub struct GenParseMatch<G: Grammar>(pub Match<G>);
 
 impl<G: Grammar> GenParseMatch<G> {
-    fn write_node(&self, f: &mut Formatter, start: usize, node: &Match<G>) -> fmt::Result {
+    fn write_node(&self, f: &mut Formatter, start: u32, node: &Match<G>) -> fmt::Result {
         let end = start + node.distance();
 
         match node.grouping() {
@@ -44,7 +44,7 @@ impl<G: Grammar> GenParseMatch<G> {
 
     fn next_is_enter<'b>(
         &self,
-        iter: &mut BufferedIter<impl Iterator<Item = (usize, &'b Match<G>, EnterExit)>>,
+        iter: &mut BufferedIter<impl Iterator<Item = (u32, &'b Match<G>, EnterExit)>>,
     ) -> bool
     where
         G: 'b,
@@ -57,7 +57,7 @@ impl<G: Grammar> GenParseMatch<G> {
     fn delimit_normal<'b>(
         &self,
         f: &mut Formatter,
-        iter: &mut BufferedIter<impl Iterator<Item = (usize, &'b Match<G>, EnterExit)>>,
+        iter: &mut BufferedIter<impl Iterator<Item = (u32, &'b Match<G>, EnterExit)>>,
     ) -> fmt::Result
     where
         G: 'b,
@@ -72,7 +72,7 @@ impl<G: Grammar> GenParseMatch<G> {
     fn delimit_pretty<'b>(
         &self,
         f: &mut Formatter,
-        iter: &mut BufferedIter<impl Iterator<Item = (usize, &'b Match<G>, EnterExit)>>,
+        iter: &mut BufferedIter<impl Iterator<Item = (u32, &'b Match<G>, EnterExit)>>,
     ) -> fmt::Result
     where
         G: 'b,
@@ -97,7 +97,7 @@ impl<G: Grammar> GenParseMatch<G> {
     fn fmt_normal<'b>(
         &self,
         f: &mut Formatter,
-        iter: &mut BufferedIter<impl Iterator<Item = (usize, &'b Match<G>, EnterExit)>>,
+        iter: &mut BufferedIter<impl Iterator<Item = (u32, &'b Match<G>, EnterExit)>>,
     ) -> fmt::Result
     where
         G: 'b,
@@ -131,7 +131,7 @@ impl<G: Grammar> GenParseMatch<G> {
     fn fmt_pretty<'b>(
         &self,
         f: &mut Formatter,
-        iter: &mut BufferedIter<impl Iterator<Item = (usize, &'b Match<G>, EnterExit)>>,
+        iter: &mut BufferedIter<impl Iterator<Item = (u32, &'b Match<G>, EnterExit)>>,
     ) -> fmt::Result
     where
         G: 'b,
@@ -198,7 +198,7 @@ const FINISH_STATE: State = 0;
 
 #[allow(unused)]
 macro_rules! generate {
-    ($start:expr, $dispatch:ident) => {
+    ($start:expr, $cache_slots:expr, $dispatch:ident) => {
         impl std::fmt::Debug for ExpectedImpl {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 let mut tuple = f.debug_tuple("Error");
@@ -227,6 +227,10 @@ macro_rules! generate {
 
             fn start_state(&self) -> State {
                 $start
+            }
+
+            fn cache_slots(&self) -> usize {
+                $cache_slots
             }
 
             unsafe fn dispatch_state<I: Input + ?Sized>(

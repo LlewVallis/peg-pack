@@ -11,6 +11,8 @@ pub trait Grammar: Sized {
 
     fn start_state(&self) -> State;
 
+    fn cache_slots(&self) -> usize;
+
     unsafe fn dispatch_state<I: Input + ?Sized>(&self, state: State, ctx: &mut Context<I, Self>);
 }
 

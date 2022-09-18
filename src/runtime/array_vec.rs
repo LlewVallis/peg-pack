@@ -33,27 +33,33 @@ impl<T, const N: usize> ArrayVec<T, N> {
         result
     }
 
-    pub fn len(&self) -> usize {
+    fn assert_invariants(&self) {
         if self.len as usize > N {
             unsafe {
                 unreachable_unchecked();
             }
         }
+    }
 
+    pub fn len(&self) -> usize {
+        self.assert_invariants();
         self.len as usize
     }
 
     pub unsafe fn get_unchecked(&self, index: usize) -> &T {
+        self.assert_invariants();
         self.values.get_unchecked(index).assume_init_ref()
     }
 
     pub unsafe fn push_unchecked(&mut self, value: T) {
-        let len = self.len();
+        self.assert_invariants();
+        let len = self.len as usize;
         *self.values.get_unchecked_mut(len) = MaybeUninit::new(value);
         self.len = self.len.checked_add(1).unwrap_unchecked();
     }
 
     fn take_all_maybe_uninit(&mut self) -> [MaybeUninit<T>; N] {
+        self.assert_invariants();
         self.len = 0;
         unsafe { mem::replace(&mut self.values, MaybeUninit::uninit().assume_init()) }
     }

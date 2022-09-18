@@ -20,7 +20,11 @@ macro_rules! passes {
 }
 
 const STAGES: &[&[Pass]] = &[
-    passes!(resolve_delegate, lower_to_first_choice, lower_to_first_choice_without_seq),
+    passes!(
+        resolve_delegate,
+        lower_to_first_choice,
+        lower_to_first_choice_without_seq
+    ),
     passes!(
         replace_by_character,
         eliminate_redundant_seqs,
