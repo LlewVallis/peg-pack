@@ -1,0 +1,30 @@
+# Using the CLI
+
+Peg Pack is a command line tool that transforms a grammar into a working parser.
+As such, we'll first need to install it!
+Use the command below to download and install `peg-pack`:
+
+```sh
+cargo install peg-pack
+```
+
+If you don't have cargo, you'll need to install Rust [here](https://rustup.rs/).
+
+Now that we've got that out of the way you should be able to run Peg Pack from the command line, for example:
+
+```
+peg-pack --help
+```
+
+The most important option to the CLI is of course going to be a path to your grammar, which is provided as a positional (not a flag) argument.
+When debugging grammars, you can additionally specify the `-i` option and type some input to quickly see how an excerpt will parse.
+Press <kbd>Ctrl</kbd>-<kbd>D</kbd> on Unix, or <kbd>Ctrl</kbd>-<kbd>Z</kbd> followed by <kbd>Enter</kbd> on Windows, when you've finished.
+
+Here is an example of interactively running a parser:
+
+```
+peg-pack -i grammar.js
+```
+
+Beyond this, you can use the `-o` flag to configure where the generated parser and relevant build files will be placed.
+For more, run `peg-pack --help`.

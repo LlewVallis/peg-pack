@@ -425,13 +425,17 @@ macro_rules! generate {
         impl<V: Visitor> GenVisitor<Impl> for V {
             fn enter(&mut self, label: Label, position: u32, length: u32) -> VisitResult {
                 self.enter(VisitorEnterInfo {
-                    label, position, length
+                    label,
+                    position,
+                    length,
                 })
             }
 
             fn exit(&mut self, label: Label, position: u32, length: u32) {
                 self.exit(VisitorExitInfo {
-                    label, position, length
+                    label,
+                    position,
+                    length,
                 })
             }
 
@@ -440,10 +444,13 @@ macro_rules! generate {
                 expected_labels: &'static [Label],
                 expected_literals: &'static [&'static [u8]],
                 position: u32,
-                length: u32
+                length: u32,
             ) -> VisitResult {
                 self.enter_error(VisitorEnterErrorInfo {
-                    expected_labels, expected_literals, position, length
+                    expected_labels,
+                    expected_literals,
+                    position,
+                    length,
                 })
             }
 
@@ -452,10 +459,13 @@ macro_rules! generate {
                 expected_labels: &'static [Label],
                 expected_literals: &'static [&'static [u8]],
                 position: u32,
-                length: u32
+                length: u32,
             ) {
                 self.exit_error(VisitorExitErrorInfo {
-                    expected_labels, expected_literals, position, length
+                    expected_labels,
+                    expected_literals,
+                    position,
+                    length,
                 })
             }
         }

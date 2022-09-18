@@ -93,7 +93,8 @@ impl Parser {
         let mut trait_impl = codegen.trait_impl("ExpectedType<Label>", "Expected");
 
         {
-            let mut literals_function = trait_impl.function("fn literals(&self) -> &'static [&'static [u8]]");
+            let mut literals_function =
+                trait_impl.function("fn literals(&self) -> &'static [&'static [u8]]");
             self.generate_expected_literals(&mut literals_function);
         }
 
