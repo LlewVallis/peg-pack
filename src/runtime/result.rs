@@ -5,7 +5,7 @@ use std::iter::FusedIterator;
 use std::ops::Deref;
 
 use super::array_vec::ArrayVec;
-use super::grammar::{Expected, Grammar, Label};
+use super::grammar::{ExpectedType, Grammar, LabelType};
 use super::refc::Refc;
 use super::stack::Stack;
 
@@ -311,7 +311,7 @@ impl<G: Grammar> Match<G> {
         self.error_distance
     }
 
-    pub fn walk(&self) -> impl Iterator<Item = (u32, &Self, EnterExit)> {
+    pub fn walk(&self) -> Walk<G> {
         Walk {
             initialized: false,
             parents: Stack::of((0, self, 0)),
@@ -320,13 +320,13 @@ impl<G: Grammar> Match<G> {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub enum Grouping<L: Label, E: Expected<L>> {
+pub enum Grouping<L: LabelType, E: ExpectedType<L>> {
     None,
     Label(L),
     Error(E),
 }
 
-impl<L: Label, E: Expected<L>> Grouping<L, E> {
+impl<L: LabelType, E: ExpectedType<L>> Grouping<L, E> {
     fn is_none(&self) -> bool {
         match self {
             Grouping::None => true,
@@ -341,9 +341,15 @@ pub enum EnterExit {
     Exit,
 }
 
-struct Walk<'a, G: Grammar> {
+pub struct Walk<'a, G: Grammar> {
     initialized: bool,
     parents: Stack<(u32, &'a Match<G>, u8)>,
+}
+
+impl<'a, G: Grammar> Walk<'a, G> {
+    pub unsafe fn skip_node(&mut self) {
+        self.parents.pop();
+    }
 }
 
 impl<'a, G: Grammar> Iterator for Walk<'a, G> {

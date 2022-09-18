@@ -63,7 +63,7 @@ impl Parser {
 
     fn generate_labels(&self, codegen: &mut Codegen) {
         codegen.line("#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]");
-        let mut enumeration = codegen.enumeration("LabelImpl");
+        let mut enumeration = codegen.enumeration("Label", true);
 
         let labels = self
             .labels()
@@ -77,12 +77,12 @@ impl Parser {
 
         mem::drop(enumeration);
 
-        codegen.trait_impl("Label", "LabelImpl");
+        codegen.trait_impl("LabelType", "Label");
     }
 
     fn generate_expecteds(&self, codegen: &mut Codegen) {
         codegen.line("#[derive(Copy, Clone, Eq, PartialEq, Hash)]");
-        let mut enumeration = codegen.enumeration("ExpectedImpl");
+        let mut enumeration = codegen.enumeration("Expected", false);
 
         for (id, _) in self.expecteds() {
             enumeration.variant(&format!("E{}", id.0));
@@ -90,15 +90,15 @@ impl Parser {
 
         mem::drop(enumeration);
 
-        let mut trait_impl = codegen.trait_impl("Expected<LabelImpl>", "ExpectedImpl");
+        let mut trait_impl = codegen.trait_impl("ExpectedType<Label>", "Expected");
 
         {
-            let mut literals_function = trait_impl.function("fn literals(&self) -> &[&[u8]]");
+            let mut literals_function = trait_impl.function("fn literals(&self) -> &'static [&'static [u8]]");
             self.generate_expected_literals(&mut literals_function);
         }
 
         {
-            let mut labels_function = trait_impl.function("fn labels(&self) -> &[LabelImpl]");
+            let mut labels_function = trait_impl.function("fn labels(&self) -> &'static [Label]");
             self.generate_expected_labels(&mut labels_function);
         }
     }
@@ -132,7 +132,7 @@ impl Parser {
 
             let labels = expected
                 .labels()
-                .map(|label| format!("LabelImpl::{}", self.pascal_case(label)))
+                .map(|label| format!("Label::{}", self.pascal_case(label)))
                 .collect::<Vec<_>>();
 
             let line = format!("&[{}]", labels.join(", "));
@@ -281,10 +281,7 @@ impl Parser {
                     );
                 }
                 1 => {
-                    function.line(&format!(
-                        "ctx.state_error_end(ExpectedImpl::E{});",
-                        expected.0
-                    ));
+                    function.line(&format!("ctx.state_error_end(Expected::E{});", expected.0));
                 }
                 _ => unreachable!(),
             },
@@ -300,7 +297,7 @@ impl Parser {
                 1 => {
                     let label = &self.labels[label];
                     let label = self.pascal_case(label);
-                    function.line(&format!("ctx.state_label_end(LabelImpl::{});", label));
+                    function.line(&format!("ctx.state_label_end(Label::{});", label));
                 }
                 _ => unreachable!(),
             },

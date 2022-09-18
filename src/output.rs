@@ -41,7 +41,11 @@ impl Codegen {
         })
     }
 
-    pub fn enumeration(&mut self, name: &str) -> Enum {
+    pub fn enumeration(&mut self, name: &str, public: bool) -> Enum {
+        if public {
+            self.write("pub ");
+        }
+
         self.write("enum ");
         self.write(name);
         self.space();

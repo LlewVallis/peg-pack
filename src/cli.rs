@@ -96,6 +96,10 @@ struct Cli {
     /// The output directory for build artifacts
     #[clap(short, long)]
     out_dir: Option<PathBuf>,
+
+    /// Parse stdin using the generated parser
+    #[clap(short, long)]
+    interactive: bool,
 }
 
 struct Context {
@@ -129,8 +133,11 @@ impl Context {
     fn run(mut self) {
         self.set_indicator("Checking environment");
         self.check_node();
-        self.check_rust();
         self.check_grammar();
+
+        if self.opts.interactive {
+            self.check_rust();
+        }
 
         self.set_indicator("Setting up output");
         self.create_out_dir();
@@ -143,11 +150,15 @@ impl Context {
         let parser = self.load_parser();
         self.generate_code(parser);
 
-        self.set_indicator("Compiling");
-        self.compile();
+        if self.opts.interactive {
+            self.set_indicator("Compiling");
+            self.compile();
 
-        self.print_ready();
-        self.execute();
+            self.print_ready();
+            self.execute();
+        } else {
+            self.print_ready();
+        }
     }
 
     fn print_ready(&mut self) {
