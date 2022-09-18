@@ -49,7 +49,7 @@ const string = () => g.label("string", g.then()(
 ));
 
 const stringCharacter = () => g.choice(
-    g.noneOf([0, 31], [127, 255], "\"", "\\"),
+    g.noneOf("\"", "\\"),
     escapeSequence,
 );
 

@@ -23,7 +23,7 @@ const array = () => ws.label("array", ws.seq("[", ws.rep(value, ","), "]"));
 const string = () => ws.label("string", g.seq("\"", g.rep(stringCharacter), "\""));
 
 const stringCharacter = () => g.choice(
-    g.noneOf([0, 31], [127, 255], "\"", "\\"),
+    g.noneOf("\"", "\\"),
     escapeSequence,
 );
 
