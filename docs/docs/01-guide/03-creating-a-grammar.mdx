@@ -1,0 +1,163 @@
+# Creating a grammar
+
+To start, we'll first create a new file to contain our grammar.
+As previously mentioned, Peg Pack grammars are specified in vanilla Javascript, so we'll call it `grammar.js`.
+Peg Pack will run this file using [Node.js](https://nodejs.org), and it's `module.exports` will designate the entrypoint of the grammar.
+
+Here is a minimal grammar you can try out to test if your installation is working correctly:
+
+```js
+module.exports = "Hello, World!";
+```
+
+If you run the grammar from the command line using `peg-pack -i grammar.js` you can see that the parser will accept any string beginning with `Hello, World!` and reject all other input.
+
+Peg Pack grammars have access to a special global variable, `g`, which contains the API you will use to write grammars.
+After running `peg-pack` you can find Typescript declarations in the `peg-pack-out` directory, as well as your generated parser.
+
+String literal rules in Peg Pack atomically match their exact text or fail to match without consuming any input.
+Rules either match or don't match, but a successful match can embed a recoverable error.
+Graceful error handling will be covered later, but for now we will consider parsers which atomically accept or reject their input.
+
+## Sequences
+
+One of the most primitive combinators is the sequence, which takes any number of rules and creates a new rule that matches each sub-rule one after the other.
+This is spelled `g.seq(...)`.
+Note that if any sub-rule fails to match the entire sequence also fails to match without consuming input.
+
+We can update our example to make use of this new knowledge:
+
+```js
+module.exports = g.seq("Hello", ", ", "World", "!");
+```
+
+This is equivalent to our previous example, and in fact the optimizer will reduce the new grammar to the prior one.
+
+## Choices
+
+Another very common operation is choosing between two alternatives, which we do with a choice combinator.
+When we specify a choice, we typically use `g.choice(...)` but there is also a separate `g.strictChoice(...)` function with subtly different semantics.
+The distinction is important in the presence of error recovery and will be revisited later, but for now we will simply use `g.choice(...)`.
+
+Semantically, choices attempt to match each sub-rule, embodying the first match or failing if no sub-rule matches.
+The fact that choices attempt each sub-rule in order is important, and means that in general `g.choice(first, second)` is not the same as `g.choice(second, first)`.
+This differs from many other parser generators that are based on generative formalisms where choice is fundamentally commutative operation.
+To illustrate the difference, consider the regular expression `(a|ab)c` and the Peg Pack rule `g.seq(g.choice("a", "ab"), "c")`.
+The regular expression accepts the string `abc` whereas the Peg Pack rule does not.
+This is because in the Peg Pack rule, `"a"` matches, the choice is exited, and then `"c"` fails, causing the entire rule to fail.
+For this reason Peg Pack is less declarative and more imperative than many parser generators.
+The upside of this is that Peg Pack rules are unambiguous and simpler to reason about as sequence of steps.
+A good rule of thumb is that the most specific, longest, or most constrained option should come first.
+
+If we want to recognise either `Hello, World!` or `Hello, Peg Pack!` we could use the following grammar:
+
+```js
+module.exports = g.seq("Hello, ", g.choice("World", "Peg Pack"), "!");
+```
+
+## Splitting up rules
+
+So far we've only looked at simple examples, but larger grammars won't want (and likely can't) specify an entire grammar on a single line.
+Let's say we want to extract `g.choice("World", "Peg Pack")` in the previous example.
+You might be tempted to write something like this:
+
+```js
+const subject = g.choice("World", "Peg Pack");
+module.exports = g.seq("Hello, ", subject, "!");
+```
+
+This would work, but it is better practice to define all your rules as functions like below:
+
+```js
+const subject = () => g.choice("World", "Peg Pack");
+module.exports = g.seq("Hello, ", subject, "!");
+```
+
+Defining rules as functions lets you create recursive and mutually recursive rules and will yield better error messages if you construct an invalid grammar.
+Note that when we use `subject` on the second line we reference it without calling it.
+This is important to maintain the aforementioned benefits and allows the runtime to invoke your function just once.
+
+## Ranges
+
+Let's say you want to match any ASCII digit.
+With the tools presented so far you would need to use something like `g.choice("0", "1", ...)`.
+This is clearly quite annoying, so Peg Pack provides the `g.oneOf(...)` and `g.noneOf(...)` combinators.
+If these combinators match, they always match exactly one byte of input.
+So, instead of our verbose choice, we can instead use `g.oneOf(["0", "9"])`.
+We can also specify integers rather than strings.
+For example, `g.oneOf([48, 57])` is equivalent to the previous example since 48 is the ASCII code of `0` and 57 is the code of `9`.
+Multiple ranges can also be used.
+For example, if we want lower and uppercase letters, we would use `g.oneOf(["a", "z"], ["A", "Z"])`.
+
+The `g.noneOf(...)` combinator is similar, except that it accepts any byte not specified in any of the ranges.
+For example, we can consume a non-null character using `g.noneOf([0, 0])`.
+Since the upper and lower bounds of the range are both 0, we can just write `g.noneOf(0)`.
+
+## Repetition
+
+Let's say we want to parse a string consisting of zero or more `a`'s followed by a `b`.
+One way to do this would be as follows:
+
+```js
+const as = () => g.choice(g.seq("a", as), "");
+module.exports = g.seq(as, "b");
+```
+
+Logically the `as` rule matches an `a` and then:
+
+* If successful, recursively tries to match more `a`'s.
+* If unsuccessful, settles for matching the empty string instead.
+
+You might think this would cause a stack overflow for large input, but Peg Pack does not use the stack to represent recursive rules.
+
+This is a common pattern, so Peg Pack comes with `g.rep(_)` and `g.repOne(_)` to handle repetitions of zero or more and one or more respectively.
+These are subtly different from the above implementation in that they use `g.strictChoice(...)` rather than `g.choice(...)` but are otherwise equivalent.
+You can also specify an optional second argument to each which acts as a separator between each repetition.
+
+With this in mind, we can rewrite the example above:
+
+```js
+module.exports = g.seq(g.rep("a"), "b");
+```
+
+## Left recursion
+
+Now let's consider what would happen if we executed the following grammar:
+
+```js
+const inception = () => inception;
+module.exports = inception;
+```
+
+If you try to run this, you'll see the Peg Pack command line tool complain.
+This is an example of *left recursion*, which occurs whenever a rule invokes itself recursively without first consuming input.
+Semantically, this represents an infinite loop since `inception` will continue to invoke itself forever.
+Peg Pack uses static analysis to ensure that this never manifests in a generated parser.
+
+Sometimes it isn't obvious why a rule is left recursive.
+For example, consider `g.rep("")`.
+Although we haven't written the recursion ourselves, this is indeed implicitly left recursive because of the way `g.rep(_)` is defined and more broadly because it contains an infinite loop.
+
+Despite the apparent absurdity of left recursion, there are some grammars which can be elegantly specified left recursively.
+Peg Pack aims to support such grammars natively in the future, but for now you'll need to rewrite your grammar to be right recursive.
+
+## Lookahead
+
+For complex grammars, you'll sometimes need a rule to match or fail based on future input without actually consuming in the case of a match.
+In this case, you can use the `g.ahead(...)` and `g.notAhead(...)` combinators.
+
+For example, `g.ahead("foo")` matches (without consuming any input) if and only if `"foo"` would match at the current position in the input.
+Predictably, `g.notAhead("foo")` does the opposite, matching if `"foo"` would fail to match.
+
+## More combinators
+
+There are several other combinators provided for your convenience that are easily defined in terms of the other ones.
+
+| Combinator       | Description                                                                                 |
+|------------------|---------------------------------------------------------------------------------------------|
+| `g.opt(...)`     | Optionally matches one of the arguments. Equivalent to `g.strictChoice(g.choice(...), "")`. |
+| `g.empty`        | Always matches without consuming any input. Equivalent to `""` or `g.seq()`.                |
+| `g.never`        | Always fails to match. Equivalent to `g.oneOf()` or `g.choice()`.                           |
+| `g.any`          | Matches any single byte. Equivalent to `g.noneOf()`.                                        |
+| `g.eof`          | Matches the end of the input stream. Equivalent to `g.notAhead(g.any)`                      |
+| `g.anonymize(_)` | Has no semantics other than hiding the name of the passed function from the compiler.       |

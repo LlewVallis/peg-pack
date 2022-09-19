@@ -72,9 +72,7 @@ const config = {
         ],
       },
       footer: {
-        style: "dark",
-        links: [],
-        copyright: `Copyright © ${new Date().getFullYear()} Llew Vallis`,
+        copyright: "Built by <a target='_blank' href='https://llew.netlify.app/'>Llew Vallis</a> :)",
       },
       prism: {
         theme: lightCodeTheme,
