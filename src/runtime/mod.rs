@@ -302,12 +302,18 @@ impl<'a, G: Grammar> Iterator for ErrorIter<'a, G> {
     }
 }
 
+/// Directs the control flow when visiting a node.
+///
+/// Can be used to skip over a sub-tree or exit entirely.
 #[allow(unused)]
 #[non_exhaustive]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum VisitResult {
+    /// Descends into the sub-tree.
     Continue,
+    /// Skips over the sub-tree, without calling `exit`.
     Skip,
+    /// Immediately returns from without visiting anything else.
     Exit,
 }
 
@@ -318,6 +324,8 @@ const FINISH_STATE: State = 0;
 #[allow(unused)]
 macro_rules! generate {
     ($start:expr, $cache_slots:expr, $dispatch:ident) => {
+        pub use runtime::Input;
+
         impl std::fmt::Debug for Expected {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 let mut tuple = f.debug_tuple("Error");
@@ -361,19 +369,45 @@ macro_rules! generate {
             }
         }
 
+        /// The result of a successful or unsuccessful parse.
+        ///
+        /// Match on the variants to garner more information about the parse.
         #[derive(Debug)]
         pub enum Parse {
+            /// The result of a parse that successfully matched at least some of the input.
             Matched(ParseMatch),
+            /// Indicates that the parse did not match the input.
             Unmatched,
         }
 
+        impl Parse {
+            /// Unwraps the [Matched](Parse::Matched) variant, panicking if the parse did not match.
+            #[track_caller]
+            pub fn unwrap(self) -> ParseMatch {
+                match self {
+                    Self::Matched(result) => result,
+                    Self::Unmatched => panic!("parse did not match"),
+                }
+            }
+        }
+
+        /// The result of a parse that successfully matched.
+        ///
+        /// Although this represents a parse that matched the input the result may still contain
+        /// errors.
         pub struct ParseMatch(GenParseMatch<Impl>);
 
         impl ParseMatch {
+            /// Walks over the parse tree invoking the appropriate methods in the visitor.
+            ///
+            /// See the [`Visitor`] trait for more details.
             pub fn visit<V: Visitor>(&self, visitor: &mut V) {
                 self.0.visit(visitor)
             }
 
+            /// Creates an iterator over the errors in the parse tree.
+            ///
+            /// No effort is made to coalesce adjacent errors into one.
             pub fn unmerged_errors(&self) -> impl Iterator<Item = ErrorInfo> + '_ {
                 return self.0.unmerged_errors().map(|info| ErrorInfo {
                     expected_labels: info.expected_labels,
@@ -390,6 +424,10 @@ macro_rules! generate {
             }
         }
 
+        /// Attempts to parse some input, returning a [`Parse`] that represents the result.
+        ///
+        /// See [`Input`] for information on what can be passed to this function.
+        #[allow(unused)]
         pub fn parse<I: Input + ?Sized>(input: &I) -> Parse {
             let grammar = Impl;
             let result = Context::run(input, &grammar);
@@ -401,25 +439,63 @@ macro_rules! generate {
 
         pub use runtime::VisitResult;
 
+        /// An interface for walking a [`ParseMatch`] using the
+        /// [visitor pattern](https://en.wikipedia.org/wiki/Visitor_pattern).
         pub trait Visitor {
+            /// Called when entering a labelled node.
+            ///
+            /// A [`VisitResult`] is returned to indicate whether this node's descendants should
+            /// be skipped, whether the traversal should be halted, or whether the traversal should
+            /// continue.
+            ///
+            /// The default implementation simply returns [`Continue`](VisitResult::Continue).
             fn enter(&mut self, info: VisitorEnterInfo) -> VisitResult {
+                let _ = info;
                 VisitResult::Continue
             }
 
-            fn exit(&mut self, info: VisitorExitInfo) {}
+            /// Called when all of a labelled node's descendants have been traversed.
+            ///
+            /// This is called even if the node has no descendants, but is not called if the
+            /// corresponding `enter` returned [`Skip`](VisitResult::Skip).
+            fn exit(&mut self, info: VisitorExitInfo) {
+                let _ = info;
+            }
 
+            /// Called when entering an error node.
+            ///
+            /// A [`VisitResult`] is returned to indicate whether this node's descendants should
+            /// be skipped, whether the traversal should be halted, or whether the traversal should
+            /// continue.
+            ///
+            /// The default implementation simply returns [`Continue`](VisitResult::Continue).
             fn enter_error(&mut self, info: VisitorEnterErrorInfo) -> VisitResult {
+                let _ = info;
                 VisitResult::Continue
             }
 
-            fn exit_error(&mut self, info: VisitorExitErrorInfo) {}
+            /// Called when all of an error node's descendants have been traversed.
+            ///
+            /// This is called even if the node has no descendants, but is not called if the
+            /// corresponding `enter_error` returned [`Skip`](VisitResult::Skip).
+            fn exit_error(&mut self, info: VisitorExitErrorInfo) {
+                let _ = info;
+            }
         }
 
+        /// Information about an error yielded by [`ParseMatch::unmerged_errors`].
+        #[allow(unused)]
+        #[non_exhaustive]
+        #[derive(Debug)]
         pub struct ErrorInfo {
-            expected_labels: &'static [Label],
-            expected_literals: &'static [&'static [u8]],
-            position: u32,
-            length: u32,
+            /// The set of labels that were excepted at the error's position in the input stream.
+            pub expected_labels: &'static [Label],
+            /// The set of literals that were excepted at the error's position in the input stream.
+            pub expected_literals: &'static [&'static [u8]],
+            /// The position at which the error occurred.
+            pub position: u32,
+            /// The length of the input covered by the error.
+            pub length: u32,
         }
 
         impl<V: Visitor> GenVisitor<Impl> for V {
@@ -470,33 +546,55 @@ macro_rules! generate {
             }
         }
 
+        /// Information about a labelled node passed to [`Visitor::enter`].
         #[non_exhaustive]
+        #[derive(Debug)]
         pub struct VisitorEnterInfo {
+            /// The label applied to the section of input.
             pub label: Label,
+            /// The position at which the label was applied.
             pub position: u32,
+            /// The length of input covered by the label.
             pub length: u32,
         }
 
+        /// Information about a labelled node passed to [`Visitor::exit`].
         #[non_exhaustive]
+        #[derive(Debug)]
         pub struct VisitorExitInfo {
+            /// The label applied to the section of input.
             pub label: Label,
+            /// The position at which the label was applied.
             pub position: u32,
+            /// The length of input covered by the label.
             pub length: u32,
         }
 
+        /// Information about an error node passed to [`Visitor::enter_error`].
         #[non_exhaustive]
+        #[derive(Debug)]
         pub struct VisitorEnterErrorInfo {
+            /// The set of labels that were excepted at the error's position in the input stream.
             pub expected_labels: &'static [Label],
+            /// The set of literals that were excepted at the error's position in the input stream.
             pub expected_literals: &'static [&'static [u8]],
+            /// The position at which the error occurred.
             pub position: u32,
+            /// The length of the input covered by the error.
             pub length: u32,
         }
 
+        /// Information about an error node passed to [`Visitor::exit_error`].
         #[non_exhaustive]
+        #[derive(Debug)]
         pub struct VisitorExitErrorInfo {
+            /// The set of labels that were excepted at the error's position in the input stream.
             pub expected_labels: &'static [Label],
+            /// The set of literals that were excepted at the error's position in the input stream.
             pub expected_literals: &'static [&'static [u8]],
+            /// The position at which the error occurred.
             pub position: u32,
+            /// The length of the input covered by the error.
             pub length: u32,
         }
     };
