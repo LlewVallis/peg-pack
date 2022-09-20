@@ -1,0 +1,173 @@
+# Using generated parsers
+
+Using Peg Pack's interactive mode is good for testing but is insufficient for integrating into an actual project.
+Here we'll present a full example of how you can integrate Peg Pack into a Rust project by building a primitive command line email address parser.
+
+First, let's create a new project with `cargo`:
+
+```
+cargo new --bin peg-pack-demo
+```
+
+Brilliant.
+We'll now add a grammar file to `src/grammar.js`.
+Since we're just trying to get acquainted with the Peg Pack API, we'll use the following extremely reductive grammar:
+
+```js
+const user = () => g.repOne(g.noneOf("@"));
+const domainName = () => g.repOne(g.noneOf("."));
+const tld = () => g.choice("com", "net", "org");
+const domain = () => g.seq(domainName, ".", tld);
+module.exports = g.seq(user, "@", domain, g.eof);
+```
+
+You should be able to understand this grammar based on the previous chapters, but if not go back and have a look [here](./creating-a-grammar).
+Note that we've included `g.eof` at the end of our top-level sequence, so any trailing whitespace, including newlines in the interactive mode, will prevent a match.
+
+With that out of the way, make sure you've [installed peg-pack](./using-the-cli) and run the following command in the root of the project to generate the parser:
+
+```
+peg-pack src/grammar.js
+```
+
+You'll see that a `peg-pack-out` directory has been created.
+This should be added to your `.gitignore` if you have one.
+
+We can now add some boilerplate to our `src/main.rs` to read standard input into a byte slice:
+
+```rust
+use std::io::{Read, stdin};
+
+// highlight-start
+// We can use a #[path] attribute to specify where to load the module from
+#[path = "../peg-pack-out/parser.rs"]
+mod parser;
+// highlight-end
+
+use parser::*;
+
+fn main() {
+    let mut input = String::new();
+    stdin().read_to_string(&mut input).expect("could not read input");
+    let input = input.trim().as_bytes();
+
+    println!("Received: {:?}", input);
+}
+```
+
+From there we can simply use the `parse` function to parse our input:
+
+```rust
+fn main() {
+    // ...
+
+    // highlight-start
+    let parse = parser::parse(input);
+    println!("{:?}", parse);
+    // highlight-end
+}
+```
+
+Here we passed a byte slice into the `parse` function, but you can create a custom struct implementing `parser::Input` and pass a reference to that if you wish.
+
+If you `cargo run` the project you should be able to see it printing either `Unmatched` or `Matched(Match)` depending on whether you entered a valid email address.
+The `parse` function returns a `Parse` enum, so we can match on that to provide a better experience if we wish:
+
+```rust
+fn main() {
+    // ...
+
+    // highlight-start
+    match parser::parse(input) {
+        Parse::Matched(_) => println!("Valid email address"),
+        Parse::Unmatched => println!("Invalid email address"),
+    }
+    // highlight-end
+}
+```
+
+## The visitor API
+
+The tuple field embedded in `Parse::Matched` is a `ParseMatch`, which we can inspect to garner more information about the labels and errors in our parse.
+Unfortunately, our grammar does not currently utilize errors or labels.
+Let's fix that:
+
+```js
+const user = () => g.label("user", g.repOne(g.noneOf("@")));
+const domainName = () => g.label("domain_name", g.choice(g.repOne(g.noneOf("."))));
+const tld = () => g.label("tld", g.choice("com", "net", "org"));
+const domain = () => g.label("domain", g.seq(domainName, ".", tld));
+module.exports = g.seq(g.recover("")(user), "@", g.recover("")(domain), g.eof);
+```
+
+Here we've labelled each major component of our email address and used `g.recover(...)(_)` to gracefully handle missing (but not malformed) users or domains.
+There are better ways to handle errors, but this suffices for our example.
+
+We can now use the `parser::Visitor` API to print detailed information about the parse:
+
+```rust
+fn main() {
+    // ...
+
+    // highlight-start
+    struct Visitor<'a>(&'a [u8]);
+
+    impl<'a> parser::Visitor for Visitor<'a> {
+        fn enter(&mut self, info: VisitorEnterInfo) -> VisitResult {
+            let start = info.position as usize;
+            let end = start + info.length as usize;
+            let text = String::from_utf8_lossy(&self.0[start..end]);
+            println!("{:?}: {}", info.label, text);
+            VisitResult::Continue
+        }
+
+        fn enter_error(&mut self, info: VisitorEnterErrorInfo) -> VisitResult {
+            println!("Missing {:?}", info.expected_labels[0]);
+            VisitResult::Continue
+        }
+    }
+
+    match parser::parse(input) {
+        Parse::Matched(result) => result.visit(&mut Visitor(input)),
+        Parse::Unmatched => println!("Invalid email address"),
+    }
+    // highlight-end
+}
+```
+
+If we rerun `peg-pack src/grammar.js` and feed our application `@gmail.com` then it'll echo the following back to us:
+
+```
+Missing User
+Domain: gmail.com
+DomainName: gmail
+Tld: com
+```
+
+## Using a build script
+
+When we want to make changes to our grammar and run the project we need to run two separate commands to generate the parser and run the program respectively.
+It would be nice if we could just `cargo run` and have our parser built for us.
+Thankfully, we can use [build scripts](https://doc.rust-lang.org/cargo/reference/build-scripts.html) to do exactly that!
+Create a `build.rs` file in the root &mdash; not the `src` directory &mdash; of the project and populate it with the following snippet:
+
+```rust
+use std::process::Command;
+
+fn main() {
+    println!("cargo:rerun-if-changed=src/grammar.js");
+
+    let status = Command::new("peg-pack")
+        .arg("src/grammar.js")
+        .status()
+        .expect("failed to run peg-pack");
+
+    if !status.success() {
+        panic!("peg-pack exited with non-zero status");
+    }
+}
+```
+
+Now whenever you build your project through `cargo`, the parser will automatically be built as well.
+Also, if the parser hasn't changed since the last compilation, then the build script won't be invoked.
+So don't stress overly about compile times.

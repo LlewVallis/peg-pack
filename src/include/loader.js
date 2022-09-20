@@ -179,12 +179,14 @@ function seq(...rules) {
 }
 
 function then(...syncs) {
+    const recover = this.recover(...syncs);
+
     return (...rules) => {
         const transformedRules = rules.map((rule, i) => {
             if (i === 0) {
                 return rule;
             } else {
-                return this.recover(...syncs)(rule);
+                return recover(rule);
             }
         });
 
@@ -218,13 +220,13 @@ function strictChoice(...rules) {
 }
 
 function recover(...syncs) {
-    return (rule) => {
-        const sync = this.ahead(...syncs, this.eof);
+    const sync = this.ahead(...syncs, this.eof);
 
+    return (rule) => {
         const result = this.anonymize(() => this.strictChoice(
             rule,
-            g.seq(sync, this.error(this.empty, rule)),
-            this.seq(this.error(this.any, rule), result),
+            g.seq(sync, this.error(rule)(this.empty)),
+            this.seq(this.error(rule)(this.any), result),
         ));
 
         const instruction = resolveInstruction(result);
@@ -241,14 +243,17 @@ function notAhead(...rules) {
     return createInstruction("notAhead", { target: instruction });
 }
 
-function error(rule, expected) {
-    const instruction = resolveInstruction(rule);
-    const expectedInstruction = resolveInstruction(expected);
+function error(...expecteds) {
+    const expectedInstruction = resolveInstruction(this.choice(...expecteds));
 
-    return createInstruction("error", {
-        target: instruction,
-        expected: expectedInstruction,
-    });
+    return rule => {
+        const instruction = resolveInstruction(rule);
+
+        return createInstruction("error", {
+            target: instruction,
+            expected: expectedInstruction,
+        });
+    };
 }
 
 function label(label, rule) {

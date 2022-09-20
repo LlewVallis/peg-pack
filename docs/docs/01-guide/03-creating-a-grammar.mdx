@@ -149,9 +149,22 @@ In this case, you can use the `g.ahead(...)` and `g.notAhead(...)` combinators.
 For example, `g.ahead("foo")` matches (without consuming any input) if and only if `"foo"` would match at the current position in the input.
 Predictably, `g.notAhead("foo")` does the opposite, matching if `"foo"` would fail to match.
 
+All the prior examples in this chapter accepted any amount of extraneous input after a successful parse.
+We can use lookahead to prevent this.
+Consider the rule `g.notAhead(g.noneOf())`.
+Since `g.noneOf()` matches any character, `g.notAhead(g.noneOf())` matches the end of the input stream.
+It stands to reason then that the following grammar will match `Hello, World!` but fail to match on any extraneous input:
+
+```js
+module.exports = g.seq("Hello, World!", g.notAhead(g.noneOf()));
+```
+
+This is a common pattern, so Peg Pack also provides `g.eof` to more cleanly express the end of input.
+
 ## More combinators
 
 There are several other combinators provided for your convenience that are easily defined in terms of the other ones.
+For a full list see the Typescript declaration file bundled with your generated parser.
 
 | Combinator       | Description                                                                                 |
 |------------------|---------------------------------------------------------------------------------------------|

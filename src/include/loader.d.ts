@@ -99,10 +99,10 @@ interface GrammarInterface {
 
   /**
    * Matches the provided rule, transforming it into an error if it does match.
-   * The provided expected rule will be used to generate a message for the
+   * The provided expected rules will be used to generate a message for the
    * error.
    */
-  readonly error: (rule: RuleLike, expected: RuleLike) => Rule;
+  readonly error: (...expecteds: RuleLike[]) => (rule: RuleLike) => Rule;
 
   /**
    * Matches the provided rule, wrapping it in a label if it does match.

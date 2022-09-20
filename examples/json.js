@@ -69,7 +69,7 @@ const escapeSequence = () => g.seq(
 
 const recoveringHexDigit = () => g.choice(
     hexDigit,
-    g.error(g.choice(g.noneOf("\\", "\""), g.empty), hexDigit),
+    g.error(hexDigit)(g.choice(g.noneOf("\\", "\""), g.empty)),
 );
 
 const hexDigit = () => g.oneOf(["0", "9"], ["a", "f"], ["A", "F"]);

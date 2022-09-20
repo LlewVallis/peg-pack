@@ -383,6 +383,7 @@ macro_rules! generate {
         impl Parse {
             /// Unwraps the [Matched](Parse::Matched) variant, panicking if the parse did not match.
             #[track_caller]
+            #[allow(unused)]
             pub fn unwrap(self) -> ParseMatch {
                 match self {
                     Self::Matched(result) => result,
@@ -401,6 +402,7 @@ macro_rules! generate {
             /// Walks over the parse tree invoking the appropriate methods in the visitor.
             ///
             /// See the [`Visitor`] trait for more details.
+            #[allow(unused)]
             pub fn visit<V: Visitor>(&self, visitor: &mut V) {
                 self.0.visit(visitor)
             }
@@ -408,6 +410,7 @@ macro_rules! generate {
             /// Creates an iterator over the errors in the parse tree.
             ///
             /// No effort is made to coalesce adjacent errors into one.
+            #[allow(unused)]
             pub fn unmerged_errors(&self) -> impl Iterator<Item = ErrorInfo> + '_ {
                 return self.0.unmerged_errors().map(|info| ErrorInfo {
                     expected_labels: info.expected_labels,
