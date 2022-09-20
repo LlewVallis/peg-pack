@@ -50,19 +50,30 @@ const config = {
             to: "/docs/guide/background",
             label: "Guide",
             position: "left",
-            activeBaseRegex: "/guide",
+            activeBaseRegex: "^/docs/guide",
           },
           {
             to: "/docs/reference",
             label: "Reference",
             position: "left",
-            activeBaseRegex: "/reference",
+            activeBaseRegex: "^/docs/reference",
           },
           {
             to: "/docs/features",
             label: "Features",
             position: "left",
-            activeBaseRegex: "/features",
+            activeBaseRegex: "^/docs/features",
+          },
+          {
+            to: "/docs/security",
+            label: "Security",
+            position: "left",
+            activeBaseRegex: "^/docs/security",
+          },
+          {
+            href: "pathname:///rustdoc/parser",
+            label: "Rustdoc",
+            position: "right",
           },
           {
             href: "https://github.com/LlewVallis/peg-pack",

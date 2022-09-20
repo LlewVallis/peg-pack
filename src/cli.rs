@@ -39,6 +39,10 @@ const OUT_DIR_FILES: &[(&str, &[u8])] = &[
         "build/runtime/array_vec.rs",
         include_bytes!("runtime/array_vec.rs"),
     ),
+    (
+        "build/runtime/small_vec.rs",
+        include_bytes!("runtime/small_vec.rs"),
+    ),
     ("build/runtime/stack.rs", include_bytes!("runtime/stack.rs")),
     ("build/runtime/cache.rs", include_bytes!("runtime/cache.rs")),
     ("build/runtime/refc.rs", include_bytes!("runtime/refc.rs")),
@@ -48,11 +52,13 @@ const OUT_DIR_FILES: &[(&str, &[u8])] = &[
     (".gitignore", include_bytes!("include/gitignore")),
 ];
 
-pub fn run() {
+pub fn parse_args() -> Cli {
     let command = (Cli::command() as clap::Command).color(clap::ColorChoice::Auto);
-    let cli: Cli = Cli::from_arg_matches(&command.get_matches()).unwrap();
+    Cli::from_arg_matches(&command.get_matches()).unwrap()
+}
 
-    let context = Context::new(cli);
+pub fn run(args: Cli) {
+    let context = Context::new(args);
     context.run();
 }
 
@@ -89,17 +95,17 @@ fn panic_hook(info: &PanicInfo, default_hook: &dyn Fn(&PanicInfo)) {
 
 #[derive(CliParser)]
 #[clap(author, version, about)]
-struct Cli {
+pub struct Cli {
     /// The grammar file to generate from
-    grammar: PathBuf,
+    pub grammar: PathBuf,
 
     /// The output directory for build artifacts
     #[clap(short, long)]
-    out_dir: Option<PathBuf>,
+    pub out_dir: Option<PathBuf>,
 
     /// Parse stdin using the generated parser
     #[clap(short, long)]
-    interactive: bool,
+    pub interactive: bool,
 }
 
 struct Context {

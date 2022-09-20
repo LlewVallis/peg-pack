@@ -51,11 +51,53 @@ impl<T, const N: usize> ArrayVec<T, N> {
         self.values.get_unchecked(index).assume_init_ref()
     }
 
+    pub unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
+        self.assert_invariants();
+        self.values.get_unchecked_mut(index).assume_init_mut()
+    }
+
     pub unsafe fn push_unchecked(&mut self, value: T) {
         self.assert_invariants();
         let len = self.len as usize;
         *self.values.get_unchecked_mut(len) = MaybeUninit::new(value);
         self.len = self.len.checked_add(1).unwrap_unchecked();
+    }
+
+    pub fn pop(&mut self) -> Option<T> {
+        self.assert_invariants();
+
+        if self.len == 0 {
+            return None;
+        }
+
+        self.len -= 1;
+        unsafe {
+            Some(self.values.get_unchecked(self.len as usize).assume_init_read())
+        }
+    }
+
+    pub fn last(&self) -> Option<&T> {
+        self.assert_invariants();
+
+        if self.len == 0 {
+            None
+        } else {
+            unsafe {
+                Some(self.get_unchecked(self.len as usize - 1))
+            }
+        }
+    }
+
+    pub fn last_mut(&mut self) -> Option<&mut T> {
+        self.assert_invariants();
+
+        if self.len == 0 {
+            None
+        } else {
+            unsafe {
+                Some(self.get_unchecked_mut(self.len as usize - 1))
+            }
+        }
     }
 
     fn take_all_maybe_uninit(&mut self) -> [MaybeUninit<T>; N] {

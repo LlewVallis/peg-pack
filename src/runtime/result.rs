@@ -4,10 +4,10 @@ use std::hint::unreachable_unchecked;
 use std::iter::FusedIterator;
 use std::ops::Deref;
 
+use super::small_vec::SmallVec;
 use super::array_vec::ArrayVec;
 use super::grammar::{ExpectedType, Grammar, LabelType};
 use super::refc::Refc;
-use super::stack::Stack;
 
 pub enum ParseResult<G: Grammar> {
     Matched(Match<G>),
@@ -291,6 +291,10 @@ impl<G: Grammar> Match<G> {
         }
     }
 
+    pub fn wrap(self) -> Self {
+        Self::unboxed(&self.boxed())
+    }
+
     pub fn grouping(&self) -> Grouping<G::Label, G::Expected> {
         self.grouping
     }
@@ -312,9 +316,16 @@ impl<G: Grammar> Match<G> {
     }
 
     pub fn walk(&self) -> Walk<G> {
+        self.walk_from(0)
+    }
+
+    pub fn walk_from(&self, position: u32) -> Walk<G> {
+        let mut parents = SmallVec::new();
+        parents.push((position, self, 0));
+
         Walk {
             initialized: false,
-            parents: Stack::of((0, self, 0)),
+            parents,
         }
     }
 }
@@ -343,7 +354,7 @@ pub enum EnterExit {
 
 pub struct Walk<'a, G: Grammar> {
     initialized: bool,
-    parents: Stack<(u32, &'a Match<G>, u8)>,
+    parents: SmallVec<(u32, &'a Match<G>, u8), 4>,
 }
 
 impl<'a, G: Grammar> Walk<'a, G> {
@@ -357,13 +368,13 @@ impl<'a, G: Grammar> Iterator for Walk<'a, G> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if !self.initialized {
-            let (position, node, _) = unsafe { self.parents.top().unwrap_unchecked() };
+            let (position, node, _) = unsafe { self.parents.last().unwrap_unchecked() };
 
             self.initialized = true;
             return Some((*position, node, EnterExit::Enter));
         }
 
-        let (base_position, node, child_index) = self.parents.top_mut()?;
+        let (base_position, node, child_index) = self.parents.last_mut()?;
         let base_position = *base_position;
         let node = *node;
 

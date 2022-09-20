@@ -1,5 +1,9 @@
 # Using generated parsers
 
+:::info
+You can explore the Rustdoc for the generated parsing API [here](pathname:///rustdoc/parser).
+:::
+
 Using Peg Pack's interactive mode is good for testing but is insufficient for integrating into an actual project.
 Here we'll present a full example of how you can integrate Peg Pack into a Rust project by building a primitive command line email address parser.
 
@@ -103,7 +107,10 @@ module.exports = g.seq(g.recover("")(user), "@", g.recover("")(domain), g.eof);
 Here we've labelled each major component of our email address and used `g.recover(...)(_)` to gracefully handle missing (but not malformed) users or domains.
 There are better ways to handle errors, but this suffices for our example.
 
-We can now use the `parser::Visitor` API to print detailed information about the parse:
+The visitor API lets you walk the parse tree using the [visitor design pattern](https://en.wikipedia.org/wiki/Visitor_pattern).
+Simply implement one or more of the methods in the `Visitor` trait and profit.
+
+We can now use the visitor API to print detailed information about the parse:
 
 ```rust
 fn main() {
@@ -143,6 +150,45 @@ Domain: gmail.com
 DomainName: gmail
 Tld: com
 ```
+
+## Using the cursor API
+
+The visitor API is well and good if you need to search the parse tree in one operation, but sometimes you want to traverse the parse tree intermittently.
+For such use cases, you can use the `Cursor` API.
+Conceptually, a cursor is just a pointer to either a label or error produced by the parser.
+The exception to this rule is the singleton cursor that points to the root of the parse tree.
+Even if the parse tree is entirely enclosed in a label or error, there is still a conceptual root node wrapping it.
+
+Anyway, here's how we could extract the domain of an email:
+
+```rust
+fn main() {
+    // ...
+
+    match parser::parse(input) {
+        Parse::Matched(result) => {
+            // highlight-start
+            let domain = result
+                .root()
+                .search(|cursor| cursor.grouping() == Grouping::Label(Label::Domain))
+                .next();
+
+            if let Some(domain) = domain {
+                let start = domain.position() as usize;
+                let end = start + domain.length() as usize;
+                let text = String::from_utf8_lossy(&input[start..end]);
+                println!("Domain: {}", text)
+            } else {
+                println!("Domain is missing!");
+            }
+            // highlight-end
+        }
+        Parse::Unmatched => println!("Invalid email address"),
+    }
+}
+```
+
+Check the cursor [Rustdoc](pathname:///rustdoc/parser/struct.Cursor.html) for more information.
 
 ## Using a build script
 

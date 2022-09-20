@@ -1,0 +1,9 @@
+# Security
+
+First of all, you should never feed untrusted input into the Peg Pack command line tool.
+This ought to be immediately obvious considering grammars are specified using arbitrary Javascript.
+
+There are circumstances, however, where it is desirable to feed arbitrary input into a generated parser.
+Parsers generated with Peg Pack should be safe for this purpose, provided you enforce sane limits on the size of the input you feed to the parser.
+That said, Peg Pack has not undergone extensive testing for vulnerabilities, and as such you should factor in an appropriate amount of pessimism about its safety &mdash; just as you would with handwritten native code.
+If you do find a case where a Peg Pack generated grammar crashes (or worse) with anything other than an unavoidable out of memory error, please [file an issue](https://github.com/LlewVallis/peg-pack/issues/new).
