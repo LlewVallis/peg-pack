@@ -6,6 +6,6 @@
   "series": [
     []
   ],
-  "labels": [],
+  "labels": ["foo"],
   "expecteds": []
 }

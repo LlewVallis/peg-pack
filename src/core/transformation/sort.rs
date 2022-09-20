@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+use std::collections::{HashMap};
+use std::hash::Hash;
 
 use crate::core::{Instruction, Parser};
 use crate::store::{Store, StoreKey};
@@ -81,7 +82,7 @@ impl Parser {
         );
     }
 
-    fn sort_resource<K: StoreKey, V>(
+    fn sort_resource<K: StoreKey, V: Eq + Hash>(
         &mut self,
         store: impl Fn(&mut Self) -> &mut Store<K, V>,
         extract: impl Fn(Instruction) -> Option<K>,
@@ -99,6 +100,11 @@ impl Parser {
                     mappings.insert(id, new_id);
                 }
             }
+        }
+
+        // We aren't allowed to remove resources, for example unused labels must not be trimmed
+        for (_k, v) in store(self).drain() {
+            new_store.insert(v);
         }
 
         for (_, instruction) in self.instructions.iter_mut() {

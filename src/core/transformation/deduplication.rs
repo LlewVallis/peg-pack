@@ -19,7 +19,7 @@ impl Parser {
 
     fn deduplicate_series(&mut self) {
         self.deduplicate_resource(
-            |parser| &parser.series,
+            |parser| &mut parser.series,
             |instruction, mappings| {
                 if let Instruction::Series(id) = instruction {
                     *id = mappings[id];
@@ -30,7 +30,7 @@ impl Parser {
 
     fn deduplicate_labels(&mut self) {
         self.deduplicate_resource(
-            |parser| &parser.labels,
+            |parser| &mut parser.labels,
             |instruction, mappings| {
                 if let Instruction::Label(_, id) = instruction {
                     *id = mappings[id];
@@ -41,7 +41,7 @@ impl Parser {
 
     fn deduplicate_expecteds(&mut self) {
         self.deduplicate_resource(
-            |parser| &parser.expecteds,
+            |parser| &mut parser.expecteds,
             |instruction, mappings| {
                 if let Instruction::Error(_, id) = instruction {
                     *id = mappings[id];
@@ -52,7 +52,7 @@ impl Parser {
 
     fn deduplicate_resource<K: StoreKey, V: Eq + Hash>(
         &mut self,
-        resources: impl FnOnce(&Self) -> &Store<K, V>,
+        resources: impl Fn(&mut Self) -> &mut Store<K, V>,
         fix: impl Fn(&mut Instruction, &HashMap<K, K>),
     ) {
         let mut canonicals = HashMap::new();
@@ -71,6 +71,10 @@ impl Parser {
 
         for (_, instruction) in self.instructions.iter_mut() {
             fix(instruction, &mappings);
+        }
+
+        for removal in removals {
+            resources(self).remove(removal);
         }
     }
 

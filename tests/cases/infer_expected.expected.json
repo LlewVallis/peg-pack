@@ -7,7 +7,7 @@
   "series": [
     []
   ],
-  "labels": [],
+  "labels": ["foo"],
   "expecteds": [{
     "labels": ["foo"],
     "literals": [

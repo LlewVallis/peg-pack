@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::fmt;
+use std::{fmt, mem};
 use std::fmt::{Debug, Formatter};
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -60,6 +60,11 @@ impl<K: StoreKey, V> Store<K, V> {
 
     pub fn iter_mut(&mut self) -> impl DoubleEndedIterator<Item = (K, &mut V)> {
         self.map.iter_mut().map(|(k, v)| (K::from_usize(*k), v))
+    }
+
+    pub fn drain(&mut self) -> impl DoubleEndedIterator<Item = (K, V)> {
+        let store = mem::replace(self, Self::new());
+        store.map.into_iter().map(|(k, v)| (K::from_usize(k), v))
     }
 
     pub fn len(&self) -> usize {

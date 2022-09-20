@@ -9,6 +9,6 @@
       "ranges": []
     }]
   ],
-  "labels": [],
+  "labels": ["foo"],
   "expecteds": []
 }

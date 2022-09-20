@@ -8,7 +8,6 @@ impl Parser {
     pub(super) fn trim(&mut self) {
         self.trim_instructions();
         self.trim_series();
-        self.trim_labels();
         self.trim_expecteds();
     }
 
@@ -50,16 +49,6 @@ impl Parser {
             |parser| &mut parser.series,
             |instruction| match instruction {
                 Instruction::Series(id) => Some(id),
-                _ => None,
-            },
-        );
-    }
-
-    fn trim_labels(&mut self) {
-        self.trim_resource(
-            |parser| &mut parser.labels,
-            |instruction| match instruction {
-                Instruction::Label(_, id) => Some(id),
                 _ => None,
             },
         );
