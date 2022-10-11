@@ -289,7 +289,6 @@ impl<'a, G: Grammar> FusedIterator for ErrorIter<'a, G> {}
 ///
 /// Can be used to skip over a sub-tree or exit entirely.
 #[allow(unused)]
-#[non_exhaustive]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum VisitResult {
     /// Descends into the sub-tree.
@@ -520,6 +519,7 @@ macro_rules! generate {
                     expected_literals: info.expected_literals,
                     position: info.position,
                     length: info.length,
+                    _private: (),
                 });
             }
         }
@@ -591,7 +591,6 @@ macro_rules! generate {
 
         /// Information about an error yielded by [`ParseMatch::unmerged_errors`].
         #[allow(unused)]
-        #[non_exhaustive]
         #[derive(Debug)]
         pub struct ErrorInfo {
             /// The set of labels that were excepted at the error's position in the input stream.
@@ -602,6 +601,7 @@ macro_rules! generate {
             pub position: u32,
             /// The length of the input covered by the error.
             pub length: u32,
+            _private: (),
         }
 
         impl<V: Visitor> GenVisitor<Impl> for V {
@@ -611,6 +611,7 @@ macro_rules! generate {
                     position,
                     length,
                     has_error,
+                    _private: (),
                 })
             }
 
@@ -620,6 +621,7 @@ macro_rules! generate {
                     position,
                     length,
                     has_error,
+                    _private: (),
                 })
             }
 
@@ -635,6 +637,7 @@ macro_rules! generate {
                     expected_literals,
                     position,
                     length,
+                    _private: (),
                 })
             }
 
@@ -650,12 +653,12 @@ macro_rules! generate {
                     expected_literals,
                     position,
                     length,
+                    _private: (),
                 })
             }
         }
 
         /// Information about a labelled node passed to [`Visitor::enter`].
-        #[non_exhaustive]
         #[derive(Debug)]
         pub struct VisitorEnterInfo {
             /// The label applied to the section of input.
@@ -666,10 +669,10 @@ macro_rules! generate {
             pub length: u32,
             /// Whether any descendants of the node contain an error
             pub has_error: bool,
+            _private: (),
         }
 
         /// Information about a labelled node passed to [`Visitor::exit`].
-        #[non_exhaustive]
         #[derive(Debug)]
         pub struct VisitorExitInfo {
             /// The label applied to the section of input.
@@ -680,10 +683,10 @@ macro_rules! generate {
             pub length: u32,
             /// Whether any descendants of the node contain an error
             pub has_error: bool,
+            _private: (),
         }
 
         /// Information about an error node passed to [`Visitor::enter_error`].
-        #[non_exhaustive]
         #[derive(Debug)]
         pub struct VisitorEnterErrorInfo {
             /// The set of labels that were excepted at the error's position in the input stream.
@@ -694,10 +697,10 @@ macro_rules! generate {
             pub position: u32,
             /// The length of the input covered by the error.
             pub length: u32,
+            _private: (),
         }
 
         /// Information about an error node passed to [`Visitor::exit_error`].
-        #[non_exhaustive]
         #[derive(Debug)]
         pub struct VisitorExitErrorInfo {
             /// The set of labels that were excepted at the error's position in the input stream.
@@ -708,6 +711,7 @@ macro_rules! generate {
             pub position: u32,
             /// The length of the input covered by the error.
             pub length: u32,
+            _private: (),
         }
 
         /// Points to a node in a parse tree.
