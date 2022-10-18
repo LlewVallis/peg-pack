@@ -187,30 +187,6 @@ interface GrammarInterface {
   readonly untilOne: (...syncs: RuleLike[]) => (rule: RuleLike, separator?: RuleLike) => Rule;
 
   /**
-   * Similar to `untilOne`, except that the separator can optionally be matched
-   * at the end of the repetition.
-   *
-   * Equivalent to:
-   * ```
-   * more = choice(
-   *   seq(
-   *     opt(separator),
-   *     ahead(...syncs, eof),
-   *   ),
-   *   seq(
-   *     recover(...syncs, rule)(separator),
-   *     recover(...syncs)(seq(
-   *       rule,
-   *       more
-   *     ))
-   *   )
-   * );
-   * recover(...syncs)(seq(rule, more))
-   * ```
-   */
-  readonly untilOneTailed: (...syncs: RuleLike[]) => (rule: RuleLike, separator: RuleLike) => Rule;
-
-  /**
    * Attempts to match the provided rule until one of the synchronization
    * tokens is reached. This rule always matches. Preference is always given to
    * terminating when a synchronization token is encountered, and no error will
@@ -235,33 +211,6 @@ interface GrammarInterface {
    * ```
    */
   readonly until: (...syncs: RuleLike[]) => (rule: RuleLike, separator?: RuleLike) => Rule;
-
-  /**
-   * Similar to `until`, except that the separator can optionally be matched at
-   * the end of the repetition.
-   *
-   * Equivalent to:
-   * ```
-   * more = choice(
-   *   seq(
-   *     opt(separator),
-   *     ahead(...syncs, eof),
-   *   ),
-   *   seq(
-   *     recover(...syncs, rule)(separator),
-   *     recover(...syncs)(seq(
-   *       rule,
-   *       more
-   *     ))
-   *   )
-   * );
-   * recover(...syncs)(choice(
-   *   ahead(...syncs, eof),
-   *   seq(rule, more)
-   * ))
-   * ```
-   */
-  readonly untilTailed: (...syncs: RuleLike[]) => (rule: RuleLike, separator: RuleLike) => Rule;
 
   /**
    * Matches any single character.

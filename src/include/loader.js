@@ -354,49 +354,6 @@ function until(...syncs) {
     };
 }
 
-function untilOneTailed(...syncs) {
-    return (rule, separator) => {
-        const more = this.anonymize(() => this.choice(
-            this.seq(
-                this.opt(separator),
-                this.ahead(...syncs, this.eof),
-            ),
-            this.seq(
-                this.recover(...syncs, rule)(separator),
-                this.recover(...syncs)(this.seq(
-                    rule,
-                    more
-                )),
-            ),
-        ));
-
-        return this.recover(...syncs)(this.seq(rule, more));
-    };
-}
-
-function untilTailed(...syncs) {
-    return (rule, separator) => {
-        const more = this.anonymize(() => this.choice(
-            this.seq(
-                this.opt(separator),
-                this.ahead(...syncs, this.eof),
-            ),
-            this.seq(
-                this.recover(...syncs, rule)(separator),
-                this.recover(...syncs)(this.seq(
-                    rule,
-                    more
-                )),
-            ),
-        ));
-
-        return this.recover(...syncs)(this.choice(
-            this.ahead(...syncs, this.eof),
-            this.seq(rule, more)
-        ));
-    };
-}
-
 function any() {
     return this.noneOf();
 }
@@ -480,8 +437,6 @@ globalThis.g = prepareInterface({
     rep,
     untilOne,
     until,
-    untilOneTailed,
-    untilTailed,
     any,
     eof,
     anonymize,
