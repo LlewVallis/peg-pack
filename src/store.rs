@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
-use std::{fmt, mem};
 use std::fmt::{Debug, Formatter};
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
+use std::{fmt, mem};
 
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};

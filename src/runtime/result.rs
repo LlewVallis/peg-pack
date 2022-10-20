@@ -4,10 +4,10 @@ use std::hint::unreachable_unchecked;
 use std::iter::FusedIterator;
 use std::ops::Deref;
 
-use super::small_vec::SmallVec;
 use super::array_vec::ArrayVec;
 use super::grammar::{ExpectedType, Grammar, LabelType};
 use super::refc::Refc;
+use super::small_vec::SmallVec;
 
 pub enum ParseResult<G: Grammar> {
     Matched(Match<G>),

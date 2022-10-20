@@ -72,7 +72,11 @@ impl<T, const N: usize> ArrayVec<T, N> {
 
         self.len -= 1;
         unsafe {
-            Some(self.values.get_unchecked(self.len as usize).assume_init_read())
+            Some(
+                self.values
+                    .get_unchecked(self.len as usize)
+                    .assume_init_read(),
+            )
         }
     }
 
@@ -82,9 +86,7 @@ impl<T, const N: usize> ArrayVec<T, N> {
         if self.len == 0 {
             None
         } else {
-            unsafe {
-                Some(self.get_unchecked(self.len as usize - 1))
-            }
+            unsafe { Some(self.get_unchecked(self.len as usize - 1)) }
         }
     }
 
@@ -94,9 +96,7 @@ impl<T, const N: usize> ArrayVec<T, N> {
         if self.len == 0 {
             None
         } else {
-            unsafe {
-                Some(self.get_unchecked_mut(self.len as usize - 1))
-            }
+            unsafe { Some(self.get_unchecked_mut(self.len as usize - 1)) }
         }
     }
 

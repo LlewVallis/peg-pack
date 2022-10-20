@@ -9,7 +9,7 @@ pub use context::Context;
 pub use grammar::*;
 pub use input::*;
 use result::{EnterExit, Walk};
-pub use result::{Match, ParseResult, Grouping as GenGrouping};
+pub use result::{Grouping as GenGrouping, Match, ParseResult};
 
 mod array_vec;
 mod buffered_iter;
@@ -19,8 +19,8 @@ mod grammar;
 mod input;
 mod refc;
 mod result;
-mod stack;
 mod small_vec;
+mod stack;
 
 pub(super) const SERIES_WORK: u32 = 1;
 pub(super) const CACHE_WORK: u32 = 25;
@@ -45,7 +45,10 @@ impl<G: Grammar> GenParseMatch<G> {
     }
 
     pub fn root(&self) -> GenCursor<G> {
-        GenCursor { node: &self.0, position: 0 }
+        GenCursor {
+            node: &self.0,
+            position: 0,
+        }
     }
 
     #[allow(unused)]
@@ -201,7 +204,9 @@ impl<G: Grammar> Debug for GenParseMatch<G> {
 
         impl<'a, G: Grammar> Debug for Inner<'a, G> {
             fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-                let iter = self.0.0
+                let iter = self
+                    .0
+                     .0
                     .walk()
                     .filter(|(_, node, _)| node.grouping() != GenGrouping::None);
 
@@ -215,14 +220,18 @@ impl<G: Grammar> Debug for GenParseMatch<G> {
             }
         }
 
-        f.debug_tuple("ParseMatch")
-            .field(&Inner(self))
-            .finish()
+        f.debug_tuple("ParseMatch").field(&Inner(self)).finish()
     }
 }
 
 pub trait GenVisitor<G: Grammar> {
-    fn enter(&mut self, label: G::Label, position: u32, length: u32, has_error: bool) -> VisitResult;
+    fn enter(
+        &mut self,
+        label: G::Label,
+        position: u32,
+        length: u32,
+        has_error: bool,
+    ) -> VisitResult;
 
     fn exit(&mut self, label: G::Label, position: u32, length: u32, has_error: bool);
 
@@ -326,7 +335,10 @@ impl<'a, G: Grammar> GenCursor<'a, G> {
     }
 
     #[allow(unused)]
-    pub fn search<F: FnMut(GenCursor<'a, G>) -> bool>(&self, filter: F) -> impl Iterator<Item = GenCursor<'a, G>> {
+    pub fn search<F: FnMut(GenCursor<'a, G>) -> bool>(
+        &self,
+        filter: F,
+    ) -> impl Iterator<Item = GenCursor<'a, G>> {
         let mut walk = self.node.walk_from(self.position);
         walk.next();
 
@@ -339,9 +351,19 @@ impl<'a, G: Grammar> GenCursor<'a, G> {
         while let Some((position, node, state)) = walk.next() {
             let result = match node.grouping() {
                 GenGrouping::Label(label) => match state {
-                    EnterExit::Enter => visitor.enter(label, position, node.distance(), node.error_distance().is_some()),
+                    EnterExit::Enter => visitor.enter(
+                        label,
+                        position,
+                        node.distance(),
+                        node.error_distance().is_some(),
+                    ),
                     EnterExit::Exit => {
-                        visitor.exit(label, position, node.distance(), node.error_distance().is_some());
+                        visitor.exit(
+                            label,
+                            position,
+                            node.distance(),
+                            node.error_distance().is_some(),
+                        );
                         continue;
                     }
                 },
@@ -538,7 +560,9 @@ macro_rules! generate {
             let grammar = Impl;
             let result = Context::run(input, &grammar);
             match result {
-                ParseResult::Matched(value) => Parse::Matched(ParseMatch(GenParseMatch::new(value))),
+                ParseResult::Matched(value) => {
+                    Parse::Matched(ParseMatch(GenParseMatch::new(value)))
+                }
                 ParseResult::Unmatched { .. } => Parse::Unmatched,
             }
         }
@@ -605,7 +629,13 @@ macro_rules! generate {
         }
 
         impl<V: Visitor> GenVisitor<Impl> for V {
-            fn enter(&mut self, label: Label, position: u32, length: u32, has_error: bool) -> VisitResult {
+            fn enter(
+                &mut self,
+                label: Label,
+                position: u32,
+                length: u32,
+                has_error: bool,
+            ) -> VisitResult {
                 self.enter(VisitorEnterInfo {
                     label,
                     position,
@@ -751,16 +781,16 @@ macro_rules! generate {
                 self.0.length()
             }
 
-            /// Determines whether the node has any error node descendants, including the node 
+            /// Determines whether the node has any error node descendants, including the node
             /// itself.
-            /// 
+            ///
             /// If the node is an error node, this will always return `true`.
             pub fn has_error(&self) -> bool {
                 self.0.has_error()
             }
 
             /// Visits each node in the sub-tree below the node using the [`Visitor`] API.
-            /// 
+            ///
             /// If the referenced node is not the root node, then the node itself is also visited.
             /// See [`ParseMatch::visit`] for more information.
             pub fn visit<V: Visitor>(&self, visitor: &mut V) {
@@ -773,9 +803,12 @@ macro_rules! generate {
             /// any descendants on which the predicate returns `true`. If the predicate returns
             /// `true` on a node, it's descendants are skipped for the remainder of the search.
             pub fn search<F>(&self, mut predicate: F) -> impl Iterator<Item = Cursor<'a>>
-                where F: FnMut(Cursor) -> bool
+            where
+                F: FnMut(Cursor) -> bool,
             {
-                self.0.search(move |cursor| predicate(Cursor(cursor))).map(Cursor)
+                self.0
+                    .search(move |cursor| predicate(Cursor(cursor)))
+                    .map(Cursor)
             }
 
             /// Iterates over the immediate children of this node, yielding a cursor for each of
@@ -796,12 +829,16 @@ macro_rules! generate {
                     has_error: bool,
                 }
 
-                write!(f, "{:?}", Cursor {
-                    grouping: self.grouping(),
-                    position: self.position(),
-                    length: self.length(),
-                    has_error: self.has_error(),
-                })
+                write!(
+                    f,
+                    "{:?}",
+                    Cursor {
+                        grouping: self.grouping(),
+                        position: self.position(),
+                        length: self.length(),
+                        has_error: self.has_error(),
+                    }
+                )
             }
         }
 
@@ -819,8 +856,8 @@ macro_rules! generate {
                 expected_literals: &'static [&'static [u8]],
             },
             /// Identifies the root node of parse tree.
-            /// 
-            /// For any given parse tree, there is one cursor whose [`grouping`](Cursor::grouping) 
+            ///
+            /// For any given parse tree, there is one cursor whose [`grouping`](Cursor::grouping)
             /// method returns this variant.
             Root,
         }

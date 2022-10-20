@@ -15,7 +15,7 @@ enum Data<T, const N: usize> {
 impl<T, const N: usize> SmallVec<T, N> {
     pub fn new() -> Self {
         Self {
-            data: Data::Stack(ArrayVec::new())
+            data: Data::Stack(ArrayVec::new()),
         }
     }
 
@@ -28,10 +28,10 @@ impl<T, const N: usize> SmallVec<T, N> {
                     self.promote();
                     self.push_heap(value);
                 }
-            }
+            },
             Data::Heap(_) => unsafe {
                 self.push_heap(value);
-            }
+            },
         }
     }
 
@@ -73,7 +73,7 @@ impl<T, const N: usize> SmallVec<T, N> {
                 }
 
                 self.data = Data::Heap(vector);
-            },
+            }
             Data::Heap(_) => unreachable_unchecked(),
         }
     }
