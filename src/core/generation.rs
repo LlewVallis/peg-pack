@@ -66,6 +66,7 @@ impl Parser {
 
     fn generate_labels(&self, codegen: &mut Codegen) {
         codegen.line("/// A label identifying the semantic meaning of a segment of the input.");
+        codegen.line("#[allow(unused)]");
         codegen.line("#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]");
         let mut enumeration = codegen.enumeration("Label", true);
 

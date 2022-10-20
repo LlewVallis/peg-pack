@@ -1,26 +1,26 @@
-const ws = g.whitespace(g.choice(" ", "\n", "\r", "\t"));
+const h = g.whitespace(g.choice(" ", "\n", "\r", "\t"));
 
-const value = () => ws.choice(
+const value = () => h.choice(
     object,
     array,
     string,
     number,
-    ws.label("null", "null"),
-    ws.label("boolean", "true"),
-    ws.label("boolean", "false"),
+    h.label("null", "null"),
+    h.label("boolean", "true"),
+    h.label("boolean", "false"),
 );
 
-const object = () => ws.label("object", ws.seq("{", ws.rep(entry, ","), "}"));
+const object = () => h.label("object", h.seq("{", h.rep(entry, ","), "}"));
 
-const entry = () => ws.label("entry", ws.seq(
-    ws.label("key", string),
+const entry = () => h.label("entry", h.seq(
+    h.label("key", string),
     ":",
-    ws.label("value", value)
+    h.label("value", value)
 ));
 
-const array = () => ws.label("array", ws.seq("[", ws.rep(value, ","), "]"));
+const array = () => h.label("array", h.seq("[", h.rep(value, ","), "]"));
 
-const string = () => ws.label("string", g.seq("\"", g.rep(stringCharacter), "\""));
+const string = () => h.label("string", g.seq("\"", g.rep(stringCharacter), "\""));
 
 const stringCharacter = () => g.choice(
     g.noneOf("\"", "\\"),
@@ -37,7 +37,7 @@ const escapeSequence = () => g.seq(
 
 const hexDigit = () => g.oneOf(["0", "9"], ["a", "f"], ["A", "F"]);
 
-const number = () => ws.label("number", g.seq(
+const number = () => h.label("number", g.seq(
     g.opt("-"),
     g.choice("0", g.seq(startDigit, g.rep(digit))),
     g.opt(fractional),
@@ -56,4 +56,4 @@ const startDigit = () => g.oneOf(["1", "9"]);
 
 const digit = () => g.oneOf(["0", "9"]);
 
-module.exports = ws.seq(ws.empty, value, ws.eof);
+module.exports = h.seq(h.empty, value, h.eof);

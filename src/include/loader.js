@@ -370,8 +370,8 @@ function anonymize(f) {
     return (...args) => f(...args);
 }
 
-function whitespace(rule) {
-    const ws = this.anonymize(() => this.rep(rule));
+function whitespace(...rules) {
+    const ws = this.anonymize(() => this.rep(this.choice(...rules)));
 
     const base = interfaceBases.get(this);
     const newBase = { ...base };
@@ -468,7 +468,7 @@ const grammar = require(grammarPath);
         output = {
             version: 0,
             status: "error",
-            error: "The grammar must export an instruction or promise resolving to an instruction",
+            message: "The grammar must export an instruction or promise resolving to an instruction",
         };
     }
 

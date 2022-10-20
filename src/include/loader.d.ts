@@ -234,12 +234,12 @@ interface GrammarInterface {
 
   /**
    * Constructs a variant of this grammar interface whose operators match any
-   * number of occurrences of the provided rule between matches of rule
+   * number of occurrences of the provided rules between matches of rule
    * operands. This does not affect string literal rules. Rules created with
    * the new interface do not match the whitespace rule before or after the
    * input they match.
    */
-  readonly whitespace: (rule: RuleLike) => GrammarInterface;
+  readonly whitespace: (...rule: RuleLike[]) => GrammarInterface;
 
   /**
    * Constructs a variant of this grammar interface where the `any` rule
