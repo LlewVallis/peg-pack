@@ -98,7 +98,8 @@ Let's fix that:
 
 ```js
 const user = () => g.label("user", g.repOne(g.noneOf("@")));
-const domainName = () => g.label("domain_name", g.choice(g.repOne(g.noneOf("."))));
+const domainName = () =>
+  g.label("domain_name", g.choice(g.repOne(g.noneOf("."))));
 const tld = () => g.label("tld", g.choice("com", "net", "org"));
 const domain = () => g.label("domain", g.seq(domainName, ".", tld));
 module.exports = g.seq(g.recover("")(user), "@", g.recover("")(domain), g.eof);

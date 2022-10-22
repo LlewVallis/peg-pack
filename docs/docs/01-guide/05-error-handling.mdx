@@ -1,0 +1,139 @@
+# Error handling
+
+:::info
+You can find a long-form example of the concepts used in this chapter [here](https://github.com/LlewVallis/peg-pack/blob/master/examples/json.js).
+:::
+
+So far we've constructed parsers that either match or fail, but for real world projects we don't want such a simple binary.
+If our input is malformed, it would be useful to know where and in what way, and to still be able to analyze the parts of the input that are correct.
+
+Graceful error handling requires quality error reporting as well as recovery.
+Error _reporting_ means identifying errors and understanding what went wrong.
+Error _recovery_ is the ability to continue parsing after an error.
+Error reporting is non-trivial for PEG grammars, but error recovery is harder still.
+Peg Pack aims to be as versatile as possible when it comes to error recovery, and as such implements error recovery upon a small set of primitives &mdash; much in the same way that repetition is defined in terms of choices and sequences.
+
+## Errors
+
+Previously, we've constructed rules that simply fail on malformed input, but it'd be nice to match strings that are "close enough" to something correct and annotate the erroneous parts.
+Constructing such rules can be complicated, so we'll build up to it.
+Let's begin by producing those error annotations that tell us which parts of the input are wrong.
+Conceptually, error annotations are very similar to the labels that were introduced in the last chapter, and in fact you can think or errors as being a special kind of label.
+One difference is that an error annotation not only wraps the rule being tagged, but also references an _expected rule_.
+The expected rule of an error is generally the rule that would have matched instead had the input been correct.
+By specifying expected rules, Peg Pack is able to help you craft quality error messages.
+
+Let's say we want to create a rule that matches the string `foo`, but will also accept `bar` with a soft error.
+It is unlikely you would _really_ want to create such a rule, but it's important to be able to do it nonetheless:
+
+```javascript
+const correct = () => "foo";
+module.exports = g.choice(correct, g.error(correct)("bar"));
+```
+
+Here we used the `g.error(_)(_)` combinator.
+The first argument list corresponds to the expected rule(s) for the error (if you specify multiple, it treats them as if they were first wrapped in a choice).
+The second argument is the thing that is matched and wrapped in an error.
+It is important to note that if a completely different string is parsed, such as `buzz`, then the whole rule will unconditionally fail as before.
+If you run this with the interactive mode, you can see that Peg Pack does indeed produce an error annotation when matching `bar`.
+You'll notice that Peg Pack also included the string `foo` in the error annotation, which was derived from the expected rule given to the `g.error(_)(_)` combinator.
+When producing an error, a set of literals (strings, like `foo`) and labels will be deduced from the expected rule and exposed in the generated parser API.
+You can use these expected literals and labels to conveniently format error messages.
+
+:::caution
+The exact algorithm used to determine expected literals and labels is unspecified and subject to change without notice.
+:::
+
+## Strict and non-strict choice
+
+Previously it was noted that there are two subtly different choice combinators: `g.choice(...)` and `g.strictChoice(...)`.
+The difference is in handling errors.
+Consider the rule `g.choice(first, second)` where both `first` and `second` match.
+In the absence of soft-errors, `first` will always be chosen as the combinators result, but things become more complicated otherwise:
+
+1. If one of `first` or `second` fails to match, the other one will become the result.
+2. If both `first` and `second` are error-free, `first` will become the result.
+   A parse result is error-free if it does not contain any soft-errors.
+3. If exactly one of `first` or `second` is error-free, it will become the result.
+4. If both `first` and `second` have errors, then the one with the greatest error-distance becomes the result.
+   The error distance of a parse result is the number of consumed bytes before the start of the first soft-error.
+5. If `first` and `second` both have errors and the same error-distance, `first` becomes the result.
+
+If we generalize error-distances to include hard match failures, as well as error-free results, then the `g.choice(...)` combinator will return whichever result is greatest according to the following ordering (with preference given to the first rule in the case of a tie):
+
+$$
+\text{failed to match} < 0 < 1 < 2 < \cdots < \text{error-free}
+$$
+
+Strict choice is much simpler: `g.strictChoice(...)` returns the first successful match, whether it is error-free or not.
+Formally, `g.strictChoice(first, second)` is defined to be equivalent to `g.choice(first, g.seq(g.notAhead(first), second))`.
+This is also a perfectly good _implementation_; the optimizer will always lower this pattern down to an intrinsic.
+
+## The `recover` combinator
+
+Usually we don't just want to unconditionally produce errors though, we want to conditionally produce them only when the input is wrong.
+A common pattern is matching a rule, then, if it fails, discarding input until it does match.
+Suppose we want to parse a semicolon, but if there is some erroneous input before the semicolon it should be discarded with an error.
+We can write this as:
+
+```javascript
+module.exports = g.recover()(";");
+```
+
+If you feed this grammar the input `foo;`, you'll see that a soft-error gets produced for each byte of input before the semicolon.
+
+Notice the empty first argument list?
+That lets us specify one or more synchronization rules.
+If the `g.recover(...)(_)` combinator would discard a byte of input, it first checks that none of the synchronization rules match.
+If one of them does match, a final soft-error is produced but no more input is discarded.
+Essentially, synchronization rules specify points where it is safe to assume the target rule was forgotten.
+A natural example of this is the end of input, which incidentally is always included as a synchronization rule.
+If the end of input is reached we shouldn't (and can't) keep discarding bytes until we find our desired rule.
+Another example for the above grammar would be `}`, which might denote the end of a function or block.
+If the parser is looking for a semicolon and encounters a close brace, it should probably give up and assume the semicolon was forgotten.
+
+Let's modify our grammar:
+
+```javascript
+module.exports = g.recover("}")(";");
+```
+
+Now if we try the input `foo}` we will get an error for each letter in `foo` as well as a final error that indicates the semicolon was missed.
+Note that in this case the close brace is not consumed, so subsequent rules can match it.
+
+By default, the recover combinator skips bytes at a time, but this is often not what we want.
+Let's say we want to parse the keyword `null` with the rule `g.recover()("null")`.
+If we apply the input `abcnull`, we probably want the whole string to be an error, rather than just the `abc`.
+Furthermore, it might be useful to parse the contents of an error for syntax highlighting or diagnostic purposes.
+The solution is to discard some kind of token, rather than an individual byte, from within `g.recover(...)(_)`.
+We'll see how to do this in the [grammar interfaces chapter](custom-grammar-interfaces).
+
+## The `then` combinator
+
+It is sometimes useful to use `g.recover(...)(_)` directly, but there is often a more applicable higher-level construct.
+The `g.then(...)(...)` combinator is a useful replacement for uses of `g.seq(...)` where all but the first rule are wrapped in `g.recover(...)(_)`.
+This is best shown with an example:
+
+```javascript
+module.exports = g.then(foo)(bar, baz, buzz);
+```
+
+Is equivalent to:
+
+```javascript
+module.exports = g.seq(bar, g.recover(foo)(baz), g.recover(foo)(buzz));
+```
+
+## Error recovery and repetition
+
+Many languages have constructs where some piece of syntax is repeated an unknown number of times up until a terminating symbol is reached.
+For example, the statements in a function are repeated until a closing `}` is found.
+The `g.until(...)(_)` and `g.untilOne(...)(_)` combinators provide error-sensitive alternatives to `g.rep(_)` and `g.repOne(_)` where such a terminating symbol can be identified.
+A function body might then be written as:
+
+```javascript
+module.exports = h.then()("{", h.until("}")(statement), "}");
+```
+
+As you might expect, `g.untilOne(...)(_)` requires at least one repetition to match.
+Both of these combinators also take an optional separator in the second argument list, much like `g.rep(_)` and `g.repOne(_)`.

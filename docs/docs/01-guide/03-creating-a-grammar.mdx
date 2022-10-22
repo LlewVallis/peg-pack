@@ -1,5 +1,9 @@
 # Creating a grammar
 
+:::info
+You can find a long-form example of the concepts used in this chapter [here](https://github.com/LlewVallis/peg-pack/blob/master/examples/strict-json.js).
+:::
+
 To start, we'll first create a new file to contain our grammar.
 As previously mentioned, Peg Pack grammars are specified in vanilla Javascript, so we'll call it `grammar.js`.
 Peg Pack will run this file using [Node.js](https://nodejs.org), and it's `module.exports` will designate the entrypoint of the grammar.
@@ -37,11 +41,11 @@ This is equivalent to our previous example, and in fact the optimizer will reduc
 
 Another very common operation is choosing between two alternatives, which we do with a choice combinator.
 When we specify a choice, we typically use `g.choice(...)` but there is also a separate `g.strictChoice(...)` function with subtly different semantics.
-The distinction is important in the presence of error recovery and will be revisited later, but for now we will simply use `g.choice(...)`.
+The distinction is important in the presence of error recovery and will be revisited later, but for now we will simply use `g.choice(...)`. which is usually a good default.
 
 Semantically, choices attempt to match each sub-rule, embodying the first match or failing if no sub-rule matches.
 The fact that choices attempt each sub-rule in order is important, and means that in general `g.choice(first, second)` is not the same as `g.choice(second, first)`.
-This differs from many other parser generators that are based on generative formalisms where choice is fundamentally commutative operation.
+This differs from many other parser generators that are based on generative formalisms where choice is a fundamentally commutative operation.
 To illustrate the difference, consider the regular expression `(a|ab)c` and the Peg Pack rule `g.seq(g.choice("a", "ab"), "c")`.
 The regular expression accepts the string `abc` whereas the Peg Pack rule does not.
 This is because in the Peg Pack rule, `"a"` matches, the choice is exited, and then `"c"` fails, causing the entire rule to fail.
@@ -105,8 +109,8 @@ module.exports = g.seq(as, "b");
 
 Logically the `as` rule matches an `a` and then:
 
-* If successful, recursively tries to match more `a`'s.
-* If unsuccessful, settles for matching the empty string instead.
+- If successful, recursively tries to match more `a`'s.
+- If unsuccessful, settles for matching the empty string instead.
 
 You might think this would cause a stack overflow for large input, but Peg Pack does not use the stack to represent recursive rules.
 
@@ -130,7 +134,7 @@ module.exports = inception;
 ```
 
 If you try to run this, you'll see the Peg Pack command line tool complain.
-This is an example of *left recursion*, which occurs whenever a rule invokes itself recursively without first consuming input.
+This is an example of _left recursion_, which occurs whenever a rule invokes itself recursively without first consuming input.
 Semantically, this represents an infinite loop since `inception` will continue to invoke itself forever.
 Peg Pack uses static analysis to ensure that this never manifests in a generated parser.
 
@@ -161,13 +165,31 @@ module.exports = g.seq("Hello, World!", g.notAhead(g.noneOf()));
 
 This is a common pattern, so Peg Pack also provides `g.eof` to more cleanly express the end of input.
 
+## Labels
+
+Now let's focus on extracting information from a successful parse.
+This is actually relatively straightforward, we just use the `g.label(_, _)` combinator to annotate segments of our grammar that have semantic significance.
+For example, the following parses and labels a subset of JSON:
+
+```js
+const value = () => g.choice(boolean, array);
+const boolean = () => g.label("boolean", g.choice("true", "false"));
+const array = () => g.label("array", g.seq("[", g.rep(value, ","), "]"));
+module.exports = value;
+```
+
+We've specified two labels here: `boolean` and `array`.
+If you plug an expression into Peg Pack's interactive mode, you'll see that the parser keeps track of where each label starts and ends relative to the input.
+Peg Pack generates an enum for you that corresponds to each label you've specified in the grammar.
+See more about how to query label information programmatically [here](./using-generated-parsers).
+
 ## More combinators
 
 There are several other combinators provided for your convenience that are easily defined in terms of the other ones.
 For a full list see the Typescript declaration file bundled with your generated parser.
 
 | Combinator       | Description                                                                                 |
-|------------------|---------------------------------------------------------------------------------------------|
+| ---------------- | ------------------------------------------------------------------------------------------- |
 | `g.opt(...)`     | Optionally matches one of the arguments. Equivalent to `g.strictChoice(g.choice(...), "")`. |
 | `g.empty`        | Always matches without consuming any input. Equivalent to `""` or `g.seq()`.                |
 | `g.never`        | Always fails to match. Equivalent to `g.oneOf()` or `g.choice()`.                           |

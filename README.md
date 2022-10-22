@@ -2,6 +2,8 @@
 
 *Versatile parser generator for PEG grammars*
 
+![Peg Pack banner](banner.png)
+
 ### Links 🔗
 
 [Home](http://peg-pack.netlify.app) | [Guide](http://peg-pack.netlify.app/docs/guide) | [Reference](http://peg-pack.netlify.app/docs/reference)
