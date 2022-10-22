@@ -8,15 +8,18 @@ use super::result::Match;
 use super::result::ParseResult;
 use super::stack::Stack;
 use super::{
-    State, CACHE_WORK, CHOICE_WORK, FINISH_STATE, LABEL_WORK, MARK_ERROR_WORK, MAX_UNCACHED_WORK,
-    NOT_AHEAD_WORK, SEQ_WORK, SERIES_WORK,
+    State, CACHE_WORK, CHOICE_WORK, LABEL_WORK, MARK_ERROR_WORK, MAX_UNCACHED_WORK, NOT_AHEAD_WORK,
+    SEQ_WORK, SERIES_WORK,
 };
+
+#[allow(non_snake_case)]
+fn FINISH_STATE<I: Input + ?Sized, G: Grammar>(_ctx: &mut Context<I, G>) {}
 
 pub struct Context<'a, I: Input + ?Sized, G: Grammar> {
     input: &'a I,
-    grammar: &'a G,
+    _grammar: &'a G,
     position: u32,
-    state_stack: Stack<State>,
+    state_stack: Stack<State<I, G>>,
     result_stack: Stack<MaybeUninit<ParseResult<G>>>,
     cache: Cache<G>,
 }
@@ -29,8 +32,17 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
 
     fn finish(mut self) -> ParseResult<G> {
         unsafe {
-            while self.state() != FINISH_STATE {
-                self.grammar.dispatch_state(self.state(), &mut self);
+            loop {
+                let current_state = self.state();
+                let finish_state: State<I, G> = FINISH_STATE::<I, G>;
+
+                if mem::transmute::<_, fn()>(current_state)
+                    == mem::transmute::<_, fn()>(finish_state)
+                {
+                    break;
+                }
+
+                current_state(&mut self);
             }
 
             self.take_result()
@@ -38,12 +50,12 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
     }
 
     fn new(input: &'a I, grammar: &'a G) -> Self {
-        let mut states = Stack::of(FINISH_STATE);
+        let mut states = Stack::<State<I, G>>::of(FINISH_STATE::<I, G>);
         states.push(grammar.start_state());
 
         Self {
             input,
-            grammar,
+            _grammar: grammar,
             position: 0,
             state_stack: states,
             result_stack: Stack::of(MaybeUninit::uninit()),
@@ -51,15 +63,15 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         }
     }
 
-    fn state(&self) -> State {
+    fn state(&self) -> State<I, G> {
         unsafe { *self.state_stack.top().unwrap_unchecked() }
     }
 
-    fn state_mut(&mut self) -> &mut State {
+    fn state_mut(&mut self) -> &mut State<I, G> {
         unsafe { self.state_stack.top_mut().unwrap_unchecked() }
     }
 
-    fn push_state(&mut self, state: State) {
+    fn push_state(&mut self, state: State<I, G>) {
         self.state_stack.push(state);
     }
 
@@ -93,16 +105,16 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
 
 #[allow(unused)]
 impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
-    pub unsafe fn state_seq_start<const FIRST: State, const CONTINUATION: State>(&mut self) {
-        *self.state_mut() = CONTINUATION;
-        self.push_state(FIRST);
+    pub unsafe fn state_seq_start(&mut self, first: State<I, G>, continuation: State<I, G>) {
+        *self.state_mut() = continuation;
+        self.push_state(first);
     }
 
-    pub unsafe fn state_seq_middle<const SECOND: State, const CONTINUATION: State>(&mut self) {
+    pub unsafe fn state_seq_middle(&mut self, second: State<I, G>, continuation: State<I, G>) {
         if self.result().is_match() {
             self.stash_result();
-            *self.state_mut() = CONTINUATION;
-            self.push_state(SECOND);
+            *self.state_mut() = continuation;
+            self.push_state(second);
         } else {
             let result = self.take_result().add_work(SEQ_WORK);
             self.set_result(result);
@@ -139,12 +151,12 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         self.pop_state();
     }
 
-    pub unsafe fn state_choice_start<const FIRST: State, const CONTINUATION: State>(&mut self) {
-        *self.state_mut() = CONTINUATION;
-        self.push_state(FIRST);
+    pub unsafe fn state_choice_start(&mut self, first: State<I, G>, continuation: State<I, G>) {
+        *self.state_mut() = continuation;
+        self.push_state(first);
     }
 
-    pub unsafe fn state_choice_middle<const SECOND: State, const CONTINUATION: State>(&mut self) {
+    pub unsafe fn state_choice_middle(&mut self, second: State<I, G>, continuation: State<I, G>) {
         if self.result().is_error_free() {
             let result = self.take_result().add_work(CHOICE_WORK);
             self.set_result(result);
@@ -152,8 +164,8 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         } else {
             self.position -= self.result().distance();
             self.stash_result();
-            *self.state_mut() = CONTINUATION;
-            self.push_state(SECOND);
+            *self.state_mut() = continuation;
+            self.push_state(second);
         }
     }
 
@@ -211,14 +223,16 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         self.pop_state();
     }
 
-    pub unsafe fn state_first_choice_start<const FIRST: State, const CONTINUATION: State>(
+    pub unsafe fn state_first_choice_start(
         &mut self,
+        first: State<I, G>,
+        continuation: State<I, G>,
     ) {
-        *self.state_mut() = CONTINUATION;
-        self.push_state(FIRST);
+        *self.state_mut() = continuation;
+        self.push_state(first);
     }
 
-    pub unsafe fn state_first_choice_middle<const SECOND: State>(&mut self) {
+    pub unsafe fn state_first_choice_middle(&mut self, second: State<I, G>) {
         let result = self.take_result();
 
         if result.is_match() {
@@ -227,13 +241,13 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
             self.pop_state();
         } else {
             self.position -= result.distance();
-            *self.state_mut() = SECOND;
+            *self.state_mut() = second;
         }
     }
 
-    pub unsafe fn state_not_ahead_start<const TARGET: State, const CONTINUATION: State>(&mut self) {
-        *self.state_mut() = CONTINUATION;
-        self.push_state(TARGET)
+    pub unsafe fn state_not_ahead_start(&mut self, target: State<I, G>, continuation: State<I, G>) {
+        *self.state_mut() = continuation;
+        self.push_state(target)
     }
 
     pub unsafe fn state_not_ahead_end(&mut self) {
@@ -245,9 +259,9 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         self.pop_state();
     }
 
-    pub unsafe fn state_error_start<const TARGET: State, const CONTINUATION: State>(&mut self) {
-        *self.state_mut() = CONTINUATION;
-        self.push_state(TARGET);
+    pub unsafe fn state_error_start(&mut self, target: State<I, G>, continuation: State<I, G>) {
+        *self.state_mut() = continuation;
+        self.push_state(target);
     }
 
     pub unsafe fn state_error_end(&mut self, expected: G::Expected) {
@@ -257,9 +271,9 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         self.pop_state();
     }
 
-    pub unsafe fn state_label_start<const TARGET: State, const CONTINUATION: State>(&mut self) {
-        *self.state_mut() = CONTINUATION;
-        self.push_state(TARGET);
+    pub unsafe fn state_label_start(&mut self, target: State<I, G>, continuation: State<I, G>) {
+        *self.state_mut() = continuation;
+        self.push_state(target);
     }
 
     pub unsafe fn state_label_end(&mut self, label: G::Label) {
@@ -269,9 +283,11 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         self.pop_state();
     }
 
-    pub unsafe fn state_cache_start<const TARGET: State, const CONTINUATION: State>(
+    pub unsafe fn state_cache_start(
         &mut self,
         slot: u32,
+        target: State<I, G>,
+        continuation: State<I, G>,
     ) {
         if let Some(result) = self.cache.get(slot, self.position) {
             self.position += result.distance();
@@ -280,8 +296,8 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
             return;
         }
 
-        *self.state_mut() = CONTINUATION;
-        self.push_state(TARGET);
+        *self.state_mut() = continuation;
+        self.push_state(target);
     }
 
     pub unsafe fn state_cache_end(&mut self, slot: u32) {
@@ -295,8 +311,8 @@ impl<'a, I: Input + ?Sized, G: Grammar> Context<'a, I, G> {
         self.pop_state();
     }
 
-    pub unsafe fn state_delegate<const TARGET: State>(&mut self) {
-        *self.state_mut() = TARGET;
+    pub unsafe fn state_delegate(&mut self, target: State<I, G>) {
+        *self.state_mut() = target;
     }
 
     pub unsafe fn state_series(&mut self, matcher: impl FnOnce(&I, u32) -> (bool, u32)) {

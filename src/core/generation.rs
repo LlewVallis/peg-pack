@@ -12,10 +12,6 @@ struct State {
 }
 
 impl State {
-    pub fn const_name(&self) -> String {
-        format!("STATE_{}_{}", self.id.0, self.stage)
-    }
-
     pub fn function_name(&self) -> String {
         format!("state_{}_{}", self.id.0, self.stage)
     }
@@ -46,10 +42,8 @@ impl Parser {
         self.generate_labels(&mut codegen);
         self.generate_expecteds(&mut codegen);
         self.generate_visualization_comment(&mut codegen);
-        self.generate_state_constants(&mut codegen);
         self.generate_state_functions(&mut codegen);
         self.generate_series_functions(&mut codegen);
-        self.generate_dispatch_function(&mut codegen);
         self.generate_macro(&mut codegen);
 
         codegen.finish()
@@ -167,25 +161,6 @@ impl Parser {
         result
     }
 
-    fn generate_state_constants(&self, codegen: &mut Codegen) {
-        for (i, state) in self.states().enumerate() {
-            let instruction = self.instructions[state.id];
-            let symbol = &self.debug_symbols[&state.id];
-
-            if symbol.names.is_empty() {
-                codegen.line(&format!("// Anonymous: {:?}", instruction));
-            } else {
-                let names = symbol.names.iter().cloned().collect::<Vec<_>>();
-
-                codegen.line(&format!("// Rule {}: {:?}", names.join(", "), instruction));
-            }
-
-            codegen.line(&format!("const {}: State = {};", state.const_name(), i + 1));
-        }
-
-        codegen.newline();
-    }
-
     fn generate_state_functions(&self, codegen: &mut Codegen) {
         for state in self.states() {
             self.generate_state_function(codegen, state);
@@ -193,11 +168,14 @@ impl Parser {
     }
 
     fn generate_state_function(&self, codegen: &mut Codegen, state: State) {
+        self.generate_state_comment(codegen, state);
+
         let function_name = state.function_name();
         let function_signature = format!(
             "unsafe fn {}<I: Input + ?Sized>(ctx: &mut Context<I, Impl>)",
             function_name
         );
+
         let mut function = codegen.function(&function_signature);
 
         match self.instructions[state.id] {
@@ -312,10 +290,10 @@ impl Parser {
 
                 match state.stage {
                     0 => {
-                        let target_name = format!("STATE_{}_0", target.0);
-                        let continuation_name = format!("STATE_{}_{}", state.id.0, state.stage + 1);
+                        let target_name = format!("state_{}_0", target.0);
+                        let continuation_name = format!("state_{}_{}", state.id.0, state.stage + 1);
                         function.line(&format!(
-                            "ctx.state_cache_start::<{}, {}>(id);",
+                            "ctx.state_cache_start(id, {}, {});",
                             target_name, continuation_name
                         ));
                     }
@@ -336,6 +314,19 @@ impl Parser {
         }
     }
 
+    fn generate_state_comment(&self, codegen: &mut Codegen, state: State) {
+        let instruction = self.instructions[state.id];
+        let symbol = &self.debug_symbols[&state.id];
+
+        if symbol.names.is_empty() {
+            codegen.line(&format!("// Anonymous: {:?}", instruction));
+        } else {
+            let names = symbol.names.iter().cloned().collect::<Vec<_>>();
+
+            codegen.line(&format!("// Rule {}: {:?}", names.join(", "), instruction));
+        }
+    }
+
     fn generate_unary_continuing_dispatch(
         &self,
         block: &mut Statements,
@@ -343,10 +334,10 @@ impl Parser {
         state: State,
         target: InstructionId,
     ) {
-        let target_name = format!("STATE_{}_0", target.0);
-        let continuation_name = format!("STATE_{}_{}", state.id.0, state.stage + 1);
+        let target_name = format!("state_{}_0", target.0);
+        let continuation_name = format!("state_{}_{}", state.id.0, state.stage + 1);
         block.line(&format!(
-            "ctx.{}::<{}, {}>();",
+            "ctx.{}({}, {});",
             name, target_name, continuation_name
         ));
     }
@@ -357,7 +348,7 @@ impl Parser {
         name: &str,
         target: InstructionId,
     ) {
-        block.line(&format!("ctx.{}::<STATE_{}_0>();", name, target.0));
+        block.line(&format!("ctx.{}(state_{}_0);", name, target.0));
     }
 
     fn generate_series_functions(&self, codegen: &mut Codegen) {
@@ -443,21 +434,6 @@ impl Parser {
         }
     }
 
-    fn generate_dispatch_function(&self, codegen: &mut Codegen) {
-        let mut function = codegen.function(
-            "unsafe fn dispatch<I: Input + ?Sized>(state: State, ctx: &mut Context<I, Impl>)",
-        );
-
-        let mut state_switch = function.match_statement("state");
-
-        for state in self.states() {
-            let case_line = format!("{}(ctx)", state.function_name());
-            state_switch.case_line(&state.const_name(), &case_line);
-        }
-
-        state_switch.case_line("_", "std::hint::unreachable_unchecked()");
-    }
-
     fn generate_macro(&self, codegen: &mut Codegen) {
         let max_cache_id = self
             .instructions()
@@ -471,7 +447,7 @@ impl Parser {
         let cache_slots = max_cache_id + 1;
 
         codegen.line(&format!(
-            "generate!(STATE_{}_0, {}, dispatch);",
+            "generate!(state_{}_0, {});",
             self.start().0,
             cache_slots
         ));

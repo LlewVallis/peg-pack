@@ -434,13 +434,11 @@ impl<'a, G: Grammar, F: FnMut(GenCursor<'a, G>) -> bool> Iterator for FindIter<'
 
 impl<'a, G: Grammar, F: FnMut(GenCursor<'a, G>) -> bool> FusedIterator for FindIter<'a, G, F> {}
 
-pub type State = u32;
-
-const FINISH_STATE: State = 0;
+pub type State<I, G> = unsafe fn(ctx: &mut Context<I, G>);
 
 #[allow(unused)]
 macro_rules! generate {
-    ($start:expr, $cache_slots:expr, $dispatch:ident) => {
+    ($start:expr, $cache_slots:expr) => {
         pub use runtime::Input;
 
         impl std::fmt::Debug for Expected {
@@ -469,20 +467,12 @@ macro_rules! generate {
             type Label = Label;
             type Expected = Expected;
 
-            fn start_state(&self) -> State {
+            fn start_state<I: Input + ?Sized>(&self) -> State<I, Self> {
                 $start
             }
 
             fn cache_slots(&self) -> usize {
                 $cache_slots
-            }
-
-            unsafe fn dispatch_state<I: Input + ?Sized>(
-                &self,
-                state: State,
-                ctx: &mut Context<I, Self>,
-            ) {
-                $dispatch(state, ctx)
             }
         }
 
