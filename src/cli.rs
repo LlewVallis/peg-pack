@@ -227,7 +227,6 @@ impl Context {
         let result = Command::new("rustc")
             .args(["--edition", "2021"])
             .args(["-C", "opt-level=3"])
-            .args(["-C", "target-cpu=native"])
             .arg("-o")
             .arg(self.executable_file())
             .arg(self.harness_file())
