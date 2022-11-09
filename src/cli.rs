@@ -106,6 +106,10 @@ pub struct Cli {
     /// Parse stdin using the generated parser
     #[clap(short, long)]
     pub interactive: bool,
+
+    /// Enable slow state analysis optimizations
+    #[clap(long)]
+    pub state_opt: bool,
 }
 
 struct Context {
@@ -180,7 +184,10 @@ impl Context {
             }
         };
 
-        match Parser::load(&ir, CompilerSettings::normal()) {
+        let mut settings = CompilerSettings::normal();
+        settings.state_optimization = self.opts.state_opt;
+
+        match Parser::load(&ir, settings) {
             Ok(parser) => parser,
             Err(Error::Load(message)) => self.exit_with_error(message),
             Err(Error::LeftRecursive(left_recursive)) => {

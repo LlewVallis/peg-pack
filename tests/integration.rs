@@ -98,6 +98,7 @@ fn test(input: &[u8], expected: &[u8]) {
         character_replacement: settings.character_replacement,
         cache_insertion: settings.cache_insertion,
         redundant_junction_elimination: settings.redundant_junction_elimination,
+        state_optimization: false,
     };
 
     let parser = Parser::load(input, settings).unwrap();

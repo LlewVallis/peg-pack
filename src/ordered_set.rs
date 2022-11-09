@@ -17,6 +17,10 @@ impl<T> OrderedSet<T> {
     pub fn reverse(&mut self) {
         self.list.reverse();
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.list.is_empty()
+    }
 }
 
 impl<T: Hash + Eq + Copy> OrderedSet<T> {

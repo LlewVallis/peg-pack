@@ -10,9 +10,10 @@ mod deduplication;
 mod expected_inference;
 mod normalize;
 mod sort;
+mod state_optimize;
 mod trim;
 
-const OPT_PASSES: usize = 3;
+const OPT_PASSES: usize = 2;
 
 impl Parser {
     /// Transform and optimize the parser, cannot be run on an ill-formed grammar
@@ -26,6 +27,11 @@ impl Parser {
         for _ in 0..OPT_PASSES {
             self.normalize(settings);
             self.deduplicate();
+
+            if settings.state_optimization {
+                self.state_optimize();
+                self.deduplicate();
+            }
         }
 
         if settings.cache_insertion {
