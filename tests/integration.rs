@@ -58,7 +58,8 @@ cases!(
     character_replacement_unreachable_annotations,
     eliminate_redundant_seq,
     eliminate_redundant_choice,
-    lower_to_first_choice
+    lower_to_first_choice,
+    predicate_state_reduction,
 );
 
 #[derive(Deserialize)]
@@ -78,6 +79,8 @@ struct InputSettings {
     cache_insertion: bool,
     #[serde(default = "return_true")]
     redundant_junction_elimination: bool,
+    #[serde(default = "return_false")]
+    state_only: bool,
 }
 
 impl Default for InputSettings {
@@ -90,15 +93,20 @@ fn return_true() -> bool {
     true
 }
 
+fn return_false() -> bool {
+    false
+}
+
 fn test(input: &[u8], expected: &[u8]) {
     let settings = serde_json::from_slice::<Input>(input).unwrap().settings;
 
     let settings = CompilerSettings {
-        merge_series: settings.merge_series,
-        character_replacement: settings.character_replacement,
-        cache_insertion: settings.cache_insertion,
-        redundant_junction_elimination: settings.redundant_junction_elimination,
-        state_optimization: false,
+        merge_series: settings.merge_series && !settings.state_only,
+        character_replacement: settings.character_replacement && !settings.state_only,
+        cache_insertion: settings.cache_insertion && !settings.state_only,
+        redundant_junction_elimination: settings.redundant_junction_elimination
+            && !settings.state_only,
+        state_optimization: settings.state_only,
     };
 
     let parser = Parser::load(input, settings).unwrap();

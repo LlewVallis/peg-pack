@@ -1,4 +1,5 @@
 use std::cell::Cell;
+use std::mem;
 use std::ops::Deref;
 use std::ptr::NonNull;
 
@@ -35,7 +36,7 @@ impl<T> Drop for Refc<T> {
 
         if new_count == 0 {
             unsafe {
-                Box::from_raw(self.inner.as_ptr());
+                mem::drop(Box::from_raw(self.inner.as_ptr()));
             }
         } else {
             referents.set(new_count)

@@ -2,8 +2,8 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use crate::core::character::Character;
-use crate::core::{Instruction, InstructionId, Parser};
 use crate::core::series::Series;
+use crate::core::{Instruction, InstructionId, Parser};
 use crate::ordered_set::OrderedSet;
 
 #[derive(Eq, PartialEq, Clone)]
@@ -269,7 +269,7 @@ impl Implications {
         Rc::make_mut(&mut self.fail_implies_fail).insert(id);
     }
 
-    pub fn referents(&self) -> impl Iterator<Item = InstructionId> + '_ {
+    pub fn referents(&self) -> impl Iterator<Item=InstructionId> + '_ {
         Iterator::chain(
             Iterator::chain(
                 self.match_implies_match.iter(),
@@ -280,28 +280,104 @@ impl Implications {
                 self.fail_implies_fail.iter(),
             ),
         )
-        .copied()
+            .copied()
     }
 }
 
 impl Parser {
     pub fn state_optimize(&mut self) {
         let characters = self.characterize();
-        let (preconditions, _postconditions) = self.analyze_states(&characters);
+        let (all_preconditions, all_postconditions) = self.analyze_states(&characters);
 
-        let empty = self.insert_series(Series::empty());
-        let never = self.insert_series(Series::never());
+        let empty = Instruction::Series(self.insert_series(Series::empty()));
+        let never = Instruction::Series(self.insert_series(Series::never()));
 
         for (id, instruction) in self.instructions.iter_mut() {
-            let character = characters[&id];
-            let effect_free = !character.antitransparent && !character.label_prone && !character.error_prone;
+            Self::optimize_instruction(
+                id,
+                instruction,
+                &characters,
+                &all_preconditions,
+                &all_postconditions,
+                empty,
+                never,
+            );
+        }
+    }
 
-            if preconditions[&id].mandates(id) && effect_free {
-                *instruction = Instruction::Series(empty);
+    fn optimize_instruction(
+        id: InstructionId,
+        instruction: &mut Instruction,
+        characters: &HashMap<InstructionId, Character>,
+        all_preconditions: &HashMap<InstructionId, State>,
+        all_postconditions: &HashMap<InstructionId, Postconditions>,
+        empty: Instruction,
+        never: Instruction,
+    ) {
+        let character = characters[&id];
+        let effect_free =
+            !character.antitransparent && !character.label_prone && !character.error_prone;
+        let preconditions = &all_preconditions[&id];
+
+        if preconditions.mandates(id) && effect_free {
+            *instruction = empty;
+        }
+
+        if preconditions.forbids(id) {
+            *instruction = never;
+        }
+
+        if let Instruction::Seq(first, second) = *instruction {
+            let first_character = characters[&first];
+            let second_character = characters[&second];
+
+            let middle_state = State::union(
+                &all_preconditions[&second],
+                &all_postconditions[&first].positive,
+            );
+
+            if preconditions.mandates(first) && !first_character.antitransparent &&
+                !first_character.label_prone && !first_character.error_prone {
+                *instruction = Instruction::Delegate(second);
             }
 
-            if preconditions[&id].forbids(id) {
-                *instruction = Instruction::Series(never);
+            if middle_state.mandates(second) && !second_character.antitransparent &&
+                !second_character.label_prone && !second_character.error_prone {
+                *instruction = Instruction::Delegate(first);
+            }
+
+            if middle_state.forbids(second) {
+                *instruction = never;
+            }
+        }
+
+        if let Instruction::FirstChoice(first, second) = *instruction {
+            let first_character = characters[&first];
+
+            if preconditions.mandates(first) && !first_character.error_prone {
+                *instruction = Instruction::Delegate(first);
+            }
+
+            if preconditions.forbids(first) {
+                *instruction = Instruction::Delegate(second);
+            }
+
+            if preconditions.forbids(second) {
+                *instruction = Instruction::Delegate(first);
+            }
+        }
+
+        if let Instruction::Choice(first, second) = *instruction {
+            if preconditions.mandates(first) {
+                *instruction = Instruction::Delegate(first);
+            }
+
+            if preconditions.forbids(first) {
+                *instruction = Instruction::Delegate(second);
+            }
+
+            if preconditions.forbids(second) {
+                *instruction = Instruction::Delegate(first);
             }
         }
     }

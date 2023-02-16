@@ -1,0 +1,26 @@
+{
+  "version": 0,
+  "status": "success",
+  "start": 0,
+  "settings": {
+    "stateOnly": true
+  },
+  "instructions": [
+    {
+      "name": "seq",
+      "first": 1,
+      "second": 2
+    },
+    {
+      "name": "notAhead",
+      "target": 2
+    },
+    {
+      "name": "series",
+      "classes": [{
+        "negated": true,
+        "ranges": []
+      }]
+    }
+  ]
+}

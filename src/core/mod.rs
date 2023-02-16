@@ -166,7 +166,7 @@ impl CompilerSettings {
             character_replacement: true,
             cache_insertion: true,
             redundant_junction_elimination: true,
-            state_optimization: false
+            state_optimization: false,
         }
     }
 }

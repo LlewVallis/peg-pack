@@ -320,6 +320,14 @@ impl<'a, G: Grammar> GenCursor<'a, G> {
     }
 
     #[allow(unused)]
+    pub fn label(&self) -> Option<G::Label> {
+        match self.grouping() {
+            GenGrouping::Label(label) => Some(label),
+            _ => None,
+        }
+    }
+
+    #[allow(unused)]
     pub fn position(&self) -> u32 {
         self.position
     }
@@ -759,6 +767,23 @@ macro_rules! generate {
                     },
                     GenGrouping::None => Grouping::Root,
                 }
+            }
+
+            /// The label corresponding to the node the cursor points to, or `None` if the cursor
+            /// points to an error or the root node.
+            pub fn label(&self) -> Option<Label> {
+                self.0.label()
+            }
+
+            /// Iterates over the immediate children of this node that have the provided label.
+            pub fn labelled(&self, label: Label) -> impl Iterator<Item = Cursor<'a>> {
+                self.children()
+                    .filter(move |child| child.label() == Some(label))
+            }
+
+            /// Finds the first immediate child of this node that has the provided label, if any.
+            pub fn first(&self, label: Label) -> Option<Cursor<'a>> {
+                self.labelled(label).next()
             }
 
             /// Determines the position of the node in the input stream.
