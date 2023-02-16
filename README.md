@@ -6,7 +6,7 @@
 
 ### Links 🔗
 
-[Home](http://peg-pack.netlify.app) | [Guide](http://peg-pack.netlify.app/docs/guide) | [Reference](http://peg-pack.netlify.app/docs/reference)
+[Home](http://peg-pack.netlify.app) | [Guide](https://peg-pack.netlify.app/docs/guide/background) | [Crates.io](https://crates.io/crates/peg-pack)
 
 ### Features 💡
 
