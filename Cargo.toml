@@ -4,9 +4,13 @@ version = "0.1.0"
 authors = ["Llew Vallis <llewvallis@gmail.com>"]
 edition = "2021"
 description = "Versatile parser generator for PEG grammars"
+homepage = "https://peg-pack.netlify.app"
+documentation = "https://peg-pack.netlify.app"
 readme = "README.md"
 repository = "https://github.com/LlewVallis/peg-pack"
 license = "MIT"
+keywords = ["peg"]
+categories = ["parsing", "command-line-utilities"]
 
 [dependencies]
 bimap = "0.6.2"
