@@ -65,12 +65,6 @@ const config = {
             activeBaseRegex: "^/docs/guide",
           },
           {
-            to: "/docs/reference",
-            label: "Reference",
-            position: "left",
-            activeBaseRegex: "^/docs/reference",
-          },
-          {
             to: "/docs/features",
             label: "Features",
             position: "left",

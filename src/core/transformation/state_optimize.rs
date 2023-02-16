@@ -269,7 +269,7 @@ impl Implications {
         Rc::make_mut(&mut self.fail_implies_fail).insert(id);
     }
 
-    pub fn referents(&self) -> impl Iterator<Item=InstructionId> + '_ {
+    pub fn referents(&self) -> impl Iterator<Item = InstructionId> + '_ {
         Iterator::chain(
             Iterator::chain(
                 self.match_implies_match.iter(),
@@ -280,7 +280,7 @@ impl Implications {
                 self.fail_implies_fail.iter(),
             ),
         )
-            .copied()
+        .copied()
     }
 }
 
@@ -336,13 +336,19 @@ impl Parser {
                 &all_postconditions[&first].positive,
             );
 
-            if preconditions.mandates(first) && !first_character.antitransparent &&
-                !first_character.label_prone && !first_character.error_prone {
+            if preconditions.mandates(first)
+                && !first_character.antitransparent
+                && !first_character.label_prone
+                && !first_character.error_prone
+            {
                 *instruction = Instruction::Delegate(second);
             }
 
-            if middle_state.mandates(second) && !second_character.antitransparent &&
-                !second_character.label_prone && !second_character.error_prone {
+            if middle_state.mandates(second)
+                && !second_character.antitransparent
+                && !second_character.label_prone
+                && !second_character.error_prone
+            {
                 *instruction = Instruction::Delegate(first);
             }
 

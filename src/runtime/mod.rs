@@ -220,7 +220,18 @@ impl<G: Grammar> Debug for GenParseMatch<G> {
             }
         }
 
-        f.debug_tuple("ParseMatch").field(&Inner(self)).finish()
+        let has_elements = self
+            .0
+            .walk()
+            .filter(|(_, node, _)| node.grouping() != GenGrouping::None)
+            .next()
+            .is_some();
+
+        if has_elements {
+            f.debug_tuple("ParseMatch").field(&Inner(self)).finish()
+        } else {
+            f.debug_tuple("ParseMatch").finish()
+        }
     }
 }
 

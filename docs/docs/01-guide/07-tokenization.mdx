@@ -1,5 +1,85 @@
-# Tokenization
+# Explicit tokenization
 
-:::info
-This section is coming soon &trade;
-:::
+For better performance, you can write your own tokenizer and feed the tokens into Peg Pack.
+Running Peg Pack on top of a tokenizer also gives you more low-level control, for example by enabling you to recognize some context-sensitive constructs, like Python-style whitespace.
+It also tends to lead to terser grammars.
+The downside, of course, is that you'll be writing a tokenizer.
+
+Let's suppose we want to parse a subset of JSON with just lists and basic numbers, and that we want to tokenize ourselves.
+The idea here is simple - instead of passing the input to the parser, we pass a byte slice containing all the lexed tokens.
+Our Rust code might look something like this:
+
+```rust
+const ERROR: u8 = 0;
+const OPEN_BRACE: u8 = 1;
+const CLOSE_BRACE: u8 = 2;
+const COMMA: u8 = 3;
+const NUMBER: u8 = 4;
+
+let mut tokens = Vec::<u8>::new();
+
+let mut index = 0;
+while index < input.len() {
+    let rest = &input[index..];
+
+    if rest.starts_with(b"[") {
+        tokens.push(OPEN_BRACE);
+        index += 1;
+        continue;
+    }
+
+    if rest.starts_with(b"]") {
+        tokens.push(CLOSE_BRACE);
+        index += 1;
+        continue;
+    }
+
+    if rest.starts_with(b",") {
+        tokens.push(COMMA);
+        index += 1;
+        continue;
+    }
+
+    let first_non_digit = rest.iter()
+        .position(|c| !(b'0'..=b'9').contains(c))
+        .unwrap_or(rest.len());
+
+    if first_non_digit > 0 {
+        tokens.push(NUMBER);
+        index += first_non_digit;
+        continue;
+    }
+
+    tokens.push(ERROR);
+    index += 1;
+}
+```
+
+Then we'd be able to define our grammar in terms of the token constants in our Rust code:
+
+```javascript
+const tokenWithId = id => g.oneOf(id);
+
+const unknownToken = () => g.label("unknown_token", tokenWithId(0));
+const openBrace = () => g.label("open_brace", tokenWithId(1));
+const closeBrace = () => g.label("close_brace", tokenWithId(2));
+const comma = () => g.label("comma", tokenWithId(3));
+const number = () => g.label("number", tokenWithId(4));
+
+const anyToken = () => g.choice(unknownToken, openBrace, closeBrace, comma, number);
+
+const h = g.tokens(anyToken);
+
+const expr = () => h.choice(number, list);
+
+const list = () => h.label("list", h.then()(
+    openBrace,
+    h.until(closeBrace)(expr, comma),
+    closeBrace,
+));
+
+module.exports = h.then()("", expr, h.eof);
+```
+
+That's really all there is to it.
+For more complex use cases, you may want to use more than just one byte for tokens, or you may want to include extra information alongside tokens in the parser input.

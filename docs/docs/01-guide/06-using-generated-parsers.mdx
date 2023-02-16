@@ -203,6 +203,7 @@ use std::process::Command;
 
 fn main() {
     println!("cargo:rerun-if-changed=src/grammar.js");
+    println!("cargo:rerun-if-changed=peg-pack-out");
 
     let status = Command::new("peg-pack")
         .arg("src/grammar.js")
